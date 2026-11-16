@@ -1,145 +1,131 @@
 # CommentLens
 
-Audience intelligence and comment classification for YouTube creators.
+**Your comment section, read for you.**
 
-## Problem Statement
+A YouTube video can collect thousands of comments in a day. CommentLens reads them all, sorts them by what they mean, and gives the creator a clear view of what the audience loved, what confused them, and what they want next.
 
-YouTube creators often receive thousands of comments across their videos. Manually reading, categorizing, and synthesizing this volume of audience feedback is time-prohibitive. Consequently, creators frequently miss critical viewer questions, urgent bug reports, valuable content suggestions, and broader shifts in community sentiment. CommentLens automates this process by retrieving video comments, classifying them using Google Gemini, and presenting organized, actionable insights in a clean interface.
+Paste a link. Click a group. Read the people who watched.
 
-## Features
+---
 
-- Palettes with counts: 14 segmented views with dynamic comment counts, including All, Positive, Negative, Neutral, Questions, Suggestions, Bug reports, Praise, Duplicates, Replies, Spam, Rude or toxic, Top liked, and Unclassified.
-- Sentiment score: Overall audience reception scored on a 0 to 100 scale, paired with a qualitative sentiment indicator (such as "Mostly positive").
-- Summary: Concise natural-language paragraph synthesized by Google Gemini outlining overall audience reception and prominent discussion points.
-- Theme bars: Horizontal distribution chart visualizing the most frequent topical clusters identified across the dataset.
-- Timeline: Temporal distribution chart tracking positive, neutral, and negative comment volume over the lifecycle of the video.
-- Row detail panel: Interactive inspection drawer displaying full comment metadata, classification tags, confidence indicators, and an AI-generated suggested reply with one-click copying.
-- Ask the comments with cited IDs: Interactive inquiry module enabling creators to query the comment dataset and receive grounded answers with specific bracketed citation identifiers (such as [c12] or [c45]).
-- Top quotes: Curated selection of representative, high-signal viewer quotes with toxic remarks excluded and word counts bounded for clarity.
-- Creator report: Downloadable, publication-ready Markdown report organizing executive summary metrics, sentiment breakdown tables, top themes, bug reports, and recommended actions.
-- CSV export with Excel-safe UTF-8: Full dataset export formatted in UTF-8 with Byte Order Mark (UTF-8 BOM), ensuring proper rendering of non-Latin scripts (such as Hindi and Bengali) and symbols in spreadsheet tools like Microsoft Excel.
-- Local cache: Automated local JSON persistence in the cache directory, allowing instantaneous re-inspection of previously analyzed videos without consuming additional API quotas.
-- Demo mode: Zero-configuration demo dataset loaded directly from pre-classified samples, enabling complete exploration of all platform capabilities without entering API keys.
+## A day in the creator's life
 
-## Screenshots
+It is 9 a.m. The video went live last night. There are 4,200 comments, and the first 60 are all "first!" and emojis. Somewhere in the rest is the one comment that explains why the second half lost viewers, and another that asks for the part two everyone is waiting for.
 
-![CommentLens Dashboard](docs/screenshot-dashboard.png)
+Scrolling will not find them. CommentLens will.
 
-![CommentLens Palettes and Insights](docs/screenshot-palettes.png)
+It fetches the comments, has Google Gemini read each one, and shows the result as a row of groups with counts: 2,000 positive, 900 negative, 412 questions, 287 suggestions. Click **Negative** and every negative comment is on screen. Click **Questions** and the answers you owe your audience are in one list.
 
-## Tech Stack
+---
 
-- Python 3.11+
-- Streamlit
-- Google Gemini API (google-genai)
-- YouTube Data API v3 (google-api-python-client)
-- pandas
-- plotly
-- python-dotenv
+## What the creator sees
 
-## Setup in 5 Steps
+**The palette row.** Every group is one click away, each with its count. Click once to open it, click again to go back to all comments. Duplicates are marked, not deleted, so you can see when a hundred people said the same thing.
 
-### Step 1: Clone the repository
+**The mood reading.** A single score from 0 to 100 with a plain label: mostly negative, mixed, or mostly positive. Next to it, a short written summary of what viewers liked, what they criticized, and what they asked for.
+
+**The theme bars.** The most-mentioned topics in suggestions and criticism, such as "audio quality," "pacing," or "part 2 request." Click a theme to see the comments behind it.
+
+**The timeline.** Positive and negative reactions by day. If the mood dropped on the day after a sponsor segment, you will see it.
+
+**The detail drawer.** Open any comment to see its full text, every label it carries, a one-line summary, and a suggested reply you can copy with one click. A comment can be a question and negative at the same time, and it will appear in both groups.
+
+**Ask the comments.** Type a question in plain words: "What do viewers want next?" or "Are there bugs?" The answer cites the comment IDs it used, so every claim can be checked.
+
+**Five worth reading.** A short list of non-toxic comments that are praise or ideas, picked to cover different themes.
+
+**The creator report.** One click produces a Markdown file with your stats, themes, quotes, and suggested replies, ready to share with an editor.
+
+**Export.** Download everything, or only the group you are looking at. The CSV is saved so that Hindi and Bengali text opens correctly in Excel.
+
+---
+
+## How the reading works
+
+1. **Gather.** The YouTube Data API returns comments and replies, up to the limit you choose.
+2. **Tidy.** Empty comments are removed. Repeated comments are kept and counted.
+3. **Read.** Gemini reads comments in batches of 40 and returns structured labels: sentiment, category, theme, language, priority, and a reply. Sarcasm counts as negative. Hinglish is understood.
+4. **Check.** Every answer is checked against the expected format. Failed batches are retried, and anything still unread goes to an Unclassified group, so nothing is silently lost.
+5. **Count.** Totals, percentages, the mood score, and the timeline are calculated on your machine.
+
+Toxic comments are hidden by default. Turn on **Show toxic comments** only when you need to see them.
+
+---
+
+## Built with
+
+| Part | Tool |
+|---|---|
+| Interface | Streamlit |
+| Reading comments | Google Gemini API (`google-genai`) |
+| Fetching comments | YouTube Data API v3 |
+| Tables and charts | pandas, Plotly |
+| Settings | python-dotenv |
+
+---
+
+## Run it in five minutes
+
 ```bash
-git clone <repository-url>
+git clone https://github.com/ashadul-20/commentlens.git
 cd commentlens
-```
-
-### Step 2: Install dependencies
-```bash
 pip install -r requirements.txt
-```
-
-### Step 3: Create environment configuration
-Copy the template configuration file:
-```bash
-# Windows (PowerShell)
-Copy-Item .env.example .env
-
-# macOS / Linux
-cp .env.example .env
-```
-
-### Step 4: Add API keys
-Open `.env` in a text editor and add your API keys:
-```env
-YOUTUBE_API_KEY=YOUR_YOUTUBE_KEY_HERE
-GEMINI_API_KEY=YOUR_GEMINI_KEY_HERE
-```
-Alternatively, keys can be entered directly in the running application sidebar under Settings -> API keys & credentials.
-
-### Step 5: Launch the application
-```bash
+copy .env.example .env
 python -m streamlit run app.py
 ```
 
-The application will start locally at `http://localhost:8501`.
-
-## Obtaining API Keys
-
-### Google Gemini API
-1. Visit Google AI Studio at https://aistudio.google.com/
-2. Sign in with your Google account.
-3. Select "Get API key" and click "Create API key".
-4. Copy the generated key and assign it to `GEMINI_API_KEY`.
-
-### YouTube Data API v3
-1. Visit the Google Cloud Console at https://console.cloud.google.com/
-2. Create a new project or select an existing one.
-3. Navigate to "APIs & Services" > "Library".
-4. Search for "YouTube Data API v3" and click "Enable".
-5. Navigate to "APIs & Services" > "Credentials".
-6. Click "Create Credentials" > "API key".
-7. Copy the generated key and assign it to `YOUTUBE_API_KEY`.
-
-## Running Tests
-
-The test suite validates URL parsing, comment sanitization, duplicate detection, batch generation, schema enforcement, palette categorization, citation parsing, report generation, and CSV encoding.
-
-Execute tests using pytest:
-```bash
-python -m pytest tests/test_all.py -v
-```
-
-## Project Structure
+Add your keys to `.env`:
 
 ```
-commentlens/
-|-- app.py                  # Streamlit application entry point and interface logic
-|-- styles.css              # Custom styling definitions and typography rules
-|-- requirements.txt        # Python package dependencies
-|-- .env.example            # Environment variable template with placeholder keys
-|-- .gitignore              # Git ignore patterns for local environments and caches
-|-- README.md               # Project documentation
-|-- .streamlit/
-|   `-- config.toml         # Streamlit server and theme configuration
-|-- core/
-|   |-- __init__.py         # Package indicator
-|   |-- youtube.py          # YouTube Data API client and video URL parsing
-|   |-- cleaning.py         # Text cleaning, emoji normalization, duplicate detection
-|   |-- classifier.py       # Gemini batch classification, schemas, and summarization
-|   |-- analysis.py         # Statistical calculations, timeline, and palette filters
-|   |-- creator.py          # Grounded Q&A citations, quote filtering, report formatting
-|   |-- export.py           # Excel-compatible UTF-8 BOM CSV export handling
-|   `-- cache.py            # Local JSON cache management
-|-- cache/                  # Persisted video analysis JSON files
-|-- docs/                   # Documentation assets and screenshots
-`-- tests/
-    `-- test_all.py         # Unit and integration test suite
+GEMINI_API_KEY=your_gemini_key
+YOUTUBE_API_KEY=your_youtube_key
 ```
 
-## Privacy Note
+Open http://localhost:8501.
 
-Comments retrieved from public YouTube videos are submitted to Google Gemini API for classification and synthesis. All processed datasets and analysis results are stored solely in the local `cache/` directory on your machine. No comment data or audience information is sent to third-party tracking services or external databases.
+No keys yet? Click **Load sample video (demo)** on the first screen and explore the full dashboard with a built-in set of 150 multilingual comments.
+
+**Where to get the keys**
+
+- Gemini: Google AI Studio, aistudio.google.com
+- YouTube: Google Cloud Console, enable *YouTube Data API v3*, then create an API key
+
+---
+
+## Project layout
+
+```
+app.py              the screen you see
+core/youtube.py     reads links and fetches comments
+core/cleaning.py    tidies comments and marks repeats
+core/classifier.py  talks to Gemini and checks its answers
+core/analysis.py    counts, groups, score, themes, timeline
+core/creator.py     quotes, answers, and the creator report
+core/export.py      CSV files for Excel
+core/cache.py       remembers each analysed video
+tests/              unit tests
+```
+
+Run the tests with `python -m pytest tests/test_all.py -v`.
+
+---
+
+## Your data
+
+Comment text goes to Google Gemini so it can be read. Results are saved only in the local `cache/` folder on your computer. Your keys stay in `.env`, which Git never uploads.
+
+---
+
+## Roadmap
+
+- **Compare two videos** side by side, sentiment against sentiment.
+- **Reply drafts you can edit** before copying.
+- **Alerts** when the mood of a new upload drops sharply.
+
+---
 
 ## License
 
-MIT License
+MIT. Use it, change it, and share it.
 
-Copyright (c) 2026 Your Name
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+Built for a hackathon, for creators who deserve to hear their audience without losing a week to scrolling.
