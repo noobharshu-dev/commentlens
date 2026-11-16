@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 270" width="1200" height="270" role="img" aria-label="Pipeline: fetch, tidy, read, check, count">
+  <defs>
+    <linearGradient id="track" x1="0" x2="1"><stop offset="0" stop-color="#3B82F6"/><stop offset="0.5" stop-color="#0F766E"/><stop offset="1" stop-color="#2E7D5B"/></linearGradient>
+  </defs>
+  <rect width="1200" height="270" rx="20" fill="#F7FBFA"/>
+  <rect x="1" y="1" width="1198" height="268" rx="19" fill="none" stroke="#D5E6E3" stroke-width="2"/>
+
+  <!-- track + flowing dashes -->
+  <line x1="110" y1="120" x2="1090" y2="120" stroke="#D5E6E3" stroke-width="6" stroke-linecap="round"/>
+  <line x1="110" y1="120" x2="1090" y2="120" stroke="url(#track)" stroke-width="4" stroke-dasharray="10 14" stroke-linecap="round">
+    <animate attributeName="stroke-dashoffset" from="48" to="0" dur="1.6s" repeatCount="indefinite"/>
+  </line>
+  <!-- travelling comments -->
+  <circle r="7" fill="#2E7D5B"><animateMotion path="M110,120 L1090,120" dur="6s" repeatCount="indefinite"/></circle>
+  <circle r="7" fill="#B23B3B"><animateMotion path="M110,120 L1090,120" dur="6s" begin="-2s" repeatCount="indefinite"/></circle>
+  <circle r="7" fill="#3B6FD4"><animateMotion path="M110,120 L1090,120" dur="6s" begin="-4s" repeatCount="indefinite"/></circle>
+
+  <g font-family="Inter, 'Segoe UI', system-ui, sans-serif" text-anchor="middle">
+    <!-- node 1 -->
+    <rect x="30" y="68" width="160" height="104" rx="16" fill="#FFFFFF" stroke="#3B82F6" stroke-width="2.5"/>
+    <circle cx="110" cy="68" r="16" fill="#3B82F6"/><text x="110" y="74" font-size="15" font-weight="700" fill="#fff">1</text>
+    <text x="110" y="116" font-size="21" font-weight="700" fill="#0B2B2A">Fetch</text>
+    <text x="110" y="142" font-size="13" fill="#6B6F76">comments + replies</text>
+    <text x="110" y="214" font-size="13" font-weight="600" fill="#3B82F6">YouTube Data API v3</text>
+    <!-- node 2 -->
+    <rect x="270" y="68" width="160" height="104" rx="16" fill="#FFFFFF" stroke="#D98B0B" stroke-width="2.5"/>
+    <circle cx="350" cy="68" r="16" fill="#D98B0B"/><text x="350" y="74" font-size="15" font-weight="700" fill="#fff">2</text>
+    <text x="350" y="116" font-size="21" font-weight="700" fill="#0B2B2A">Tidy</text>
+    <text x="350" y="142" font-size="13" fill="#6B6F76">flag, never delete</text>
+    <text x="350" y="214" font-size="13" font-weight="600" fill="#D98B0B">duplicates + emoji-only</text>
+    <!-- node 3 -->
+    <rect x="510" y="68" width="160" height="104" rx="16" fill="#FFFFFF" stroke="#0F766E" stroke-width="2.5"/>
+    <circle cx="590" cy="68" r="16" fill="#0F766E"/><text x="590" y="74" font-size="15" font-weight="700" fill="#fff">3</text>
+    <text x="590" y="116" font-size="21" font-weight="700" fill="#0B2B2A">Read</text>
+    <text x="590" y="142" font-size="13" fill="#6B6F76">40 comments per batch</text>
+    <text x="590" y="214" font-size="13" font-weight="600" fill="#0F766E">Gemini, JSON output</text>
+    <!-- node 4 -->
+    <rect x="750" y="68" width="160" height="104" rx="16" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2.5"/>
+    <circle cx="830" cy="68" r="16" fill="#7C3AED"/><text x="830" y="74" font-size="15" font-weight="700" fill="#fff">4</text>
+    <text x="830" y="116" font-size="21" font-weight="700" fill="#0B2B2A">Check</text>
+    <text x="830" y="142" font-size="13" fill="#6B6F76">validate, retry, fall back</text>
+    <text x="830" y="214" font-size="13" font-weight="600" fill="#7C3AED">nothing lost silently</text>
+    <!-- node 5 -->
+    <rect x="990" y="68" width="160" height="104" rx="16" fill="#FFFFFF" stroke="#2E7D5B" stroke-width="2.5"/>
+    <circle cx="1070" cy="68" r="16" fill="#2E7D5B"/><text x="1070" y="74" font-size="15" font-weight="700" fill="#fff">5</text>
+    <text x="1070" y="116" font-size="21" font-weight="700" fill="#0B2B2A">Show</text>
+    <text x="1070" y="142" font-size="13" fill="#6B6F76">palettes, score, themes</text>
+    <text x="1070" y="214" font-size="13" font-weight="600" fill="#2E7D5B">one click per group</text>
+  </g>
+  <text x="600" y="38" text-anchor="middle" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#6B6F76" letter-spacing="1.5">FROM A PASTED LINK TO A READABLE AUDIENCE</text>
+  <text x="600" y="254" text-anchor="middle" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" fill="#8A8F98">Green, red and blue dots stand for positive, negative and question comments moving through the pipeline.</text>
+</svg>

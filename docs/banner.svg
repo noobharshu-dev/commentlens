@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 340" width="1200" height="340" role="img" aria-label="CommentLens: your comment section, read for you">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EAF7F5"/><stop offset="0.55" stop-color="#F7FBFA"/><stop offset="1" stop-color="#FFF4E5"/>
+    </linearGradient>
+    <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14B8A6"/><stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.4" fill="#0F766E" opacity="0.13"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="340" rx="20" fill="url(#bg)"/>
+  <rect width="1200" height="340" rx="20" fill="url(#dots)"/>
+  <rect x="1" y="1" width="1198" height="338" rx="19" fill="none" stroke="#D5E6E3" stroke-width="2"/>
+
+  <!-- logo -->
+  <g transform="translate(70,88) scale(1.45)">
+    <circle cx="52" cy="52" r="40" fill="#FFFFFF" stroke="url(#lg)" stroke-width="9"/>
+    <line x1="82" y1="82" x2="108" y2="108" stroke="url(#lg)" stroke-width="11" stroke-linecap="round"/>
+    <path d="M30 36h44a6 6 0 0 1 6 6v20a6 6 0 0 1-6 6H50l-12 10v-10h-8a6 6 0 0 1-6-6V42a6 6 0 0 1 6-6z" fill="#E6F2F1" stroke="#0F766E" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="38" cy="52" r="4" fill="#2E7D5B"><animate attributeName="r" values="4;5.5;4" dur="2.4s" repeatCount="indefinite"/></circle>
+    <circle cx="52" cy="52" r="4" fill="#8A8F98"><animate attributeName="r" values="4;5.5;4" dur="2.4s" begin="0.4s" repeatCount="indefinite"/></circle>
+    <circle cx="66" cy="52" r="4" fill="#B23B3B"><animate attributeName="r" values="4;5.5;4" dur="2.4s" begin="0.8s" repeatCount="indefinite"/></circle>
+  </g>
+
+  <!-- title -->
+  <text x="270" y="150" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="70" font-weight="800" fill="#0B2B2A" letter-spacing="-1.5">Comment<tspan fill="#0F766E">Lens</tspan></text>
+  <text x="272" y="196" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="25" font-weight="500" fill="#2F5F5C">Your comment section, read for you.</text>
+
+  <!-- tech chips -->
+  <g font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="600">
+    <rect x="272" y="228" width="108" height="34" rx="17" fill="#FFFFFF" stroke="#BFDCD8"/>
+    <text x="326" y="250" text-anchor="middle" fill="#0F766E">Gemini API</text>
+    <rect x="392" y="228" width="150" height="34" rx="17" fill="#FFFFFF" stroke="#BFDCD8"/>
+    <text x="467" y="250" text-anchor="middle" fill="#0F766E">YouTube Data v3</text>
+    <rect x="554" y="228" width="104" height="34" rx="17" fill="#FFFFFF" stroke="#BFDCD8"/>
+    <text x="606" y="250" text-anchor="middle" fill="#0F766E">Streamlit</text>
+    <rect x="670" y="228" width="92" height="34" rx="17" fill="#FFFFFF" stroke="#BFDCD8"/>
+    <text x="716" y="250" text-anchor="middle" fill="#0F766E">Python</text>
+  </g>
+
+  <!-- floating comment bubbles -->
+  <g font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600">
+    <g>
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,-12;0,0" dur="5s" repeatCount="indefinite"/>
+      <rect x="880" y="48" width="230" height="58" rx="14" fill="#FFFFFF" stroke="#BFE3D0"/>
+      <circle cx="904" cy="77" r="9" fill="#2E7D5B"/>
+      <text x="924" y="73" fill="#1F2328">Loved the editing.</text>
+      <text x="924" y="92" fill="#6B6F76" font-weight="500">Positive · praise</text>
+    </g>
+    <g>
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,10;0,0" dur="6s" repeatCount="indefinite"/>
+      <rect x="820" y="130" width="270" height="58" rx="14" fill="#FFFFFF" stroke="#C9D6F2"/>
+      <circle cx="844" cy="159" r="9" fill="#3B6FD4"/>
+      <text x="864" y="155" fill="#1F2328">Can you make a part 2?</text>
+      <text x="864" y="174" fill="#6B6F76" font-weight="500">Question · suggestion</text>
+    </g>
+    <g>
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,-10;0,0" dur="7s" repeatCount="indefinite"/>
+      <rect x="900" y="212" width="250" height="58" rx="14" fill="#FFFFFF" stroke="#EBC3C3"/>
+      <circle cx="924" cy="241" r="9" fill="#B23B3B"/>
+      <text x="944" y="237" fill="#1F2328">Audio drops at 4:12.</text>
+      <text x="944" y="256" fill="#6B6F76" font-weight="500">Negative · bug report</text>
+    </g>
+  </g>
+</svg>
