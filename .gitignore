@@ -31,3 +31,4 @@ Thumbs.db
 # IDE workspace settings
 .vscode/
 .idea/
+.superpowers/

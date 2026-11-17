@@ -94,7 +94,7 @@ def pick_top_quotes(comments: list[dict]) -> list[dict]:
     ]
 
     # Sort by likes descending.
-    candidates.sort(key=lambda c: c.get("likes", 0), reverse=True)
+    candidates.sort(key=lambda c: int(c.get("likes") or 0), reverse=True)
 
     seen_themes: set[str] = set()
     quotes: list[dict] = []
@@ -110,7 +110,7 @@ def pick_top_quotes(comments: list[dict]) -> list[dict]:
                 {
                     "author": c.get("author", "Anonymous"),
                     "quote": _trim_words(c.get("original_text", ""), 25),
-                    "likes": c.get("likes", 0),
+                    "likes": int(c.get("likes") or 0),
                     "theme": theme,
                 }
             )
@@ -155,11 +155,24 @@ def answer_question_groq(
         "Keep your answer under 150 words. No emoji."
     )
 
-    sample = sorted(
+    # Keyword extraction and comment ranking
+    keywords = [w.lower() for w in re.findall(r"\w+", question) if len(w) > 3]
+    matched = [c for c in comments if _keyword_match(c, keywords)][:40]
+    by_likes = sorted(
         comments,
-        key=lambda c: (str(c.get("priority", "")).lower() == "high", c.get("likes", 0)),
+        key=lambda c: (str(c.get("priority", "")).lower() == "high", int(c.get("likes") or 0)),
         reverse=True,
-    )[:60]
+    )[:40]
+
+    seen_ids = set()
+    sample = []
+    for c in matched + by_likes:
+        cid = c.get("comment_id")
+        if cid not in seen_ids:
+            seen_ids.add(cid)
+            sample.append(c)
+        if len(sample) >= 60:
+            break
 
     context_lines = "\n".join(
         f"[c{c.get('comment_id', i)}] ({c.get('primary_sentiment', 'Neutral')}) {c.get('original_text', '')[:200]}"
@@ -169,7 +182,9 @@ def answer_question_groq(
     messages = [{"role": "system", "content": system_instruction}]
     recent_history = history[-3:] if len(history) > 3 else history
     for turn in recent_history:
-        messages.append({"role": turn.get("role", "user"), "content": turn.get("text", "")})
+        raw_role = turn.get("role", "user")
+        normalized_role = "assistant" if raw_role in ("model", "assistant") else "user"
+        messages.append({"role": normalized_role, "content": turn.get("text", "")})
 
     messages.append({
         "role": "user",
@@ -245,7 +260,7 @@ def answer_question(
     matched = [c for c in comments if _keyword_match(c, keywords)][:150]
 
     # Top-liked comments (top 100).
-    by_likes = sorted(comments, key=lambda c: c.get("likes", 0), reverse=True)[:100]
+    by_likes = sorted(comments, key=lambda c: int(c.get("likes") or 0), reverse=True)[:100]
 
     # Merge, de-duplicate by comment_id.
     seen_ids: set[int] = set()

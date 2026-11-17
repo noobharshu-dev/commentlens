@@ -5,6 +5,7 @@ Paste a YouTube link to see what your viewers are saying.
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 import os
@@ -276,7 +277,7 @@ def _render_sidebar() -> int:
     with st.sidebar:
         st.markdown("### CommentLens")
         st.markdown(
-            '<p style="font-size:12px;color:#6B6F76;margin-top:-10px;">Audience intelligence for YouTube creators</p>',
+            '<p style="font-size:12px;color:var(--muted);margin-top:-10px;">Audience intelligence for YouTube creators</p>',
             unsafe_allow_html=True,
         )
         st.markdown("---")
@@ -340,11 +341,11 @@ def _render_sidebar() -> int:
             gemini_configured = bool(cur_gemini and not cur_gemini.startswith("your_"))
 
             st.markdown(
-                f'<span style="font-size:12px;color:{"#2E7D5B" if groq_configured else "#9A6B12"};">'
+                f'<span style="font-size:12px;color:{"var(--pos)" if groq_configured else "var(--warn)"};">'
                 f'Groq API: {"Configured" if groq_configured else "Not set"}</span><br>'
-                f'<span style="font-size:12px;color:{"#2E7D5B" if yt_configured else "#9A6B12"};">'
+                f'<span style="font-size:12px;color:{"var(--pos)" if yt_configured else "var(--warn)"};">'
                 f'YouTube API: {"Configured" if yt_configured else "Not set"}</span><br>'
-                f'<span style="font-size:12px;color:{"#2E7D5B" if gemini_configured else "#9A6B12"};">'
+                f'<span style="font-size:12px;color:{"var(--pos)" if gemini_configured else "var(--warn)"};">'
                 f'Gemini API: {"Configured" if gemini_configured else "Not set"}</span>',
                 unsafe_allow_html=True,
             )
@@ -445,7 +446,7 @@ def _render_sidebar() -> int:
 
         st.markdown("---")
         st.markdown(
-            '<p style="font-size:12px;color:#6B6F76;">Built with Gemini and the YouTube Data API.</p>',
+            '<p style="font-size:12px;color:var(--muted);">Built with Gemini and the YouTube Data API.</p>',
             unsafe_allow_html=True,
         )
     return limit
@@ -636,18 +637,26 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
 
     # Step 3 — verify API keys before starting long-running process
     cur_yt = os.getenv("YOUTUBE_API_KEY", "")
-    cur_gemini = os.getenv("GEMINI_API_KEY", "")
-    if not cur_yt or cur_yt.startswith("your_"):
+    if not cur_yt or cur_yt.strip().lower().startswith("your_"):
         st.error(
             "YouTube API key is missing or not configured. "
             "Please configure your API key in the sidebar Settings under 'API keys & credentials', "
             "or click 'Load sample video (demo)' to test the app immediately."
         )
         return
-    if not cur_gemini or cur_gemini.startswith("your_"):
+
+    active_provider = st.session_state.get("llm_provider", LLM_PROVIDER).lower()
+    if "gemini" in active_provider:
+        cur_llm = os.getenv("GEMINI_API_KEY", "")
+        prov_name = "Gemini"
+    else:
+        cur_llm = os.getenv("GROQ_API_KEY", "")
+        prov_name = "Groq"
+
+    if not cur_llm or cur_llm.strip().lower().startswith("your_"):
         st.error(
-            "Gemini API key is missing or not configured. "
-            "Please configure your API key in the sidebar Settings under 'API keys & credentials', "
+            f"{prov_name} API key is missing or not configured. "
+            f"Please configure your {prov_name} API key in the sidebar Settings under 'API keys & credentials', "
             "or click 'Load sample video (demo)' to test the app immediately."
         )
         return
@@ -1284,7 +1293,7 @@ def _render_two_column_section() -> None:
     col_left, col_right = st.columns([1, 1], gap="large")
 
     with col_left:
-        st.markdown('<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;margin-bottom:12px;">What viewers are saying</div>', unsafe_allow_html=True)
+        st.markdown('<div class="cl-section-heading" style="margin-bottom:12px;">What viewers are saying</div>', unsafe_allow_html=True)
         summary = st.session_state.summary or "Summary not available."
         st.markdown(
             f'<p style="font-size:16px;line-height:1.7;color:var(--ink);margin-top:4px;">{summary}</p>',
@@ -1431,43 +1440,6 @@ def _render_explore_tab() -> None:
         curr_palette = "All"
         st.session_state.active_palette = "All"
 
-    # Inject CSS for per-option clay tints
-    palette_tint_map = {
-        "All": "#FFFFFF",
-        "Positive": "#CDF2E2",
-        "Negative": "#FAD4D2",
-        "Neutral": "#E4E8EE",
-        "Questions": "#D5E4FC",
-        "Suggestions": "#E8DDFB",
-        "Bug reports": "#FDE0C6",
-        "Praise": "#D8F5C9",
-        "Duplicates": "#FFF2C4",
-        "Replies": "#D4EEF9",
-        "Spam": "#F3D6EA",
-        "Top liked": "#FFE8D6",
-        "Rude or toxic": "#FAD4D2",
-        "Unclassified": "#E4E8EE",
-    }
-    pill_styles = []
-    for idx, p_name in enumerate(visible_palettes, start=1):
-        tint = palette_tint_map.get(p_name, "#FFFFFF")
-        pill_styles.append(f"""
-        div[data-testid="stButtonGroup"] button:nth-of-type({idx}) {{
-            background-color: {tint} !important;
-        }}
-        """)
-    pill_styles.append("""
-    div[data-testid="stButtonGroup"] button[data-selected="true"] {
-        background: linear-gradient(160deg, #17918A, #0F766E) !important;
-        color: #FFFFFF !important;
-        box-shadow: 8px 8px 16px rgba(15,118,110,.3), inset 2px 2px 4px rgba(255,255,255,.3) !important;
-    }
-    div[data-testid="stButtonGroup"] button[data-selected="true"] * {
-        color: #FFFFFF !important;
-    }
-    """)
-    st.markdown(f"<style>{''.join(pill_styles)}</style>", unsafe_allow_html=True)
-
     # Native st.pills for filter selection
     chosen_palette = st.pills(
         "Filter by palette",
@@ -1518,7 +1490,7 @@ def _render_explore_tab() -> None:
         if theme_filter:
             palette_label = f"'{theme_filter}' comments"
         st.markdown(
-            f'<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;">'
+            f'<div class="cl-section-heading">'
             f'{len(filtered):,} {palette_label}</div>'
             f'<div class="note" style="color:var(--muted);font-size:13px;">'
             f'Sorted by likes. Select a row to read it in full.</div>',
@@ -1670,7 +1642,7 @@ def _render_row_detail(c: dict) -> None:
     # Close button in header
     close_col, btn_close_col = st.columns([8, 2])
     with close_col:
-        st.markdown('<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;">Comment</div>', unsafe_allow_html=True)
+        st.markdown('<div class="cl-section-heading">Comment</div>', unsafe_allow_html=True)
     with btn_close_col:
         if st.button("Close", key="close_drawer_btn", use_container_width=True):
             st.session_state.comments_table_selection = {"rows": []}
@@ -1681,31 +1653,31 @@ def _render_row_detail(c: dict) -> None:
         <div class="cl-detail-card" style="margin-top:12px;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:14px;">
             <b style="color:var(--ink);">{author}</b>
-            <span class="note tab" style="color:var(--muted);font-size:13px;">{date_str} &nbsp;&middot;&nbsp; {likes:,} likes &nbsp;&middot;&nbsp; {replies:,} replies</span>
+            <span class="note tab" style="color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;">{date_str} &nbsp;&middot;&nbsp; {likes:,} likes &nbsp;&middot;&nbsp; {replies:,} replies</span>
           </div>
-          <p style="margin-top:14px;font-size:17px;line-height:1.55;letter-spacing:-.005em;color:var(--ink);">{orig_text}</p>
-          <div style="margin-top:18px;display:flex;gap:6px;flex-wrap:wrap;">
+          <p style="margin-top:14px;font-size:16px;line-height:1.6;letter-spacing:-.005em;color:var(--ink);">{orig_text}</p>
+          <div style="margin-top:16px;display:flex;gap:6px;flex-wrap:wrap;">
             {chips_html}
           </div>
           
-          <div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--line);">
+          <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);">
             <div class="note" style="color:var(--muted);font-size:13px;">Sentiment</div>
             <div style="display:flex;align-items:center;gap:14px;margin-top:8px;">
-              <span class="tab" style="font-family:'Inter Display',Inter;font-size:26px;font-weight:650;color:var(--ink);">{score:+.2f}</span>
-              <span style="flex:1;height:8px;border-radius:4px;background:linear-gradient(90deg,#C2453D,#E1E6E3 50%,#2F8A5B);position:relative;">
-                <i style="position:absolute;left:{score_pct:.0f}%;top:-4px;width:4px;height:16px;background:var(--ink);border-radius:2px;"></i>
+              <span class="tab" style="font-family:var(--font-sans);font-size:24px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums;">{score:+.2f}</span>
+              <span style="flex:1;height:6px;border-radius:var(--radius-sm);background:linear-gradient(90deg,var(--neg),var(--line) 50%,var(--pos));position:relative;">
+                <i style="position:absolute;left:{score_pct:.0f}%;top:-4px;width:3px;height:14px;background:var(--ink);border-radius:1px;"></i>
               </span>
             </div>
           </div>
 
           <div style="margin-top:20px;">
             <div class="note" style="color:var(--muted);font-size:13px;">In short</div>
-            <p style="margin-top:4px;font-size:14px;color:var(--ink);">{ai_summary if ai_summary else 'No summary available.'}</p>
+            <p style="margin-top:4px;font-size:14px;color:var(--ink);line-height:1.6;">{ai_summary if ai_summary else 'No summary available.'}</p>
           </div>
 
           <div style="margin-top:20px;">
             <div class="note" style="color:var(--muted);font-size:13px;">Suggested reply</div>
-            <div style="margin-top:8px;padding:16px;border-radius:18px;background:var(--mint);box-shadow:var(--clay-press);line-height:1.6;font-size:14px;color:var(--ink);">
+            <div style="margin-top:8px;padding:14px 16px;border-radius:var(--radius-sm);background:var(--surface-subtle);border:1px solid var(--line);border-left:3px solid var(--accent);line-height:1.6;font-size:14px;color:var(--ink);">
               {suggested_reply if suggested_reply else 'No reply suggested for this comment.'}
             </div>
           </div>
@@ -1749,7 +1721,7 @@ def _render_ask_tab() -> None:
         ans_text = latest["answer"]
         formatted_ans = re.sub(
             r'\[c(\d+)\]',
-            r'<span style="display:inline-block;background:var(--accent-soft);color:#0B5F58;font-weight:600;font-size:12px;padding:1px 8px;border-radius:999px;margin:0 2px;font-variant-numeric:tabular-nums;">c\1</span>',
+            r'<span style="display:inline-block;background:var(--accent-soft);color:var(--accent-ink);font-weight:600;font-size:12px;padding:1px 7px;border-radius:var(--radius-sm);margin:0 2px;font-variant-numeric:tabular-nums;border:1px solid rgba(15,118,110,0.15);">c\1</span>',
             ans_text,
         )
         st.markdown(
@@ -1761,10 +1733,10 @@ def _render_ask_tab() -> None:
             unsafe_allow_html=True,
         )
 
-        # Show comments cited in clay table
+        # Show comments cited
         cited_ids = latest.get("cited_ids", [])
         if cited_ids:
-            st.markdown('<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;margin-top:36px;margin-bottom:12px;">Comments cited</div>', unsafe_allow_html=True)
+            st.markdown('<div class="cl-section-heading" style="margin-top:36px;margin-bottom:12px;">Comments cited</div>', unsafe_allow_html=True)
             cited_comments = [c for c in comments if c.get("comment_id") in cited_ids]
             if cited_comments:
                 df_cited = _build_df(cited_comments)
@@ -1895,7 +1867,7 @@ def _render_quotes_tab() -> None:
 
     if not quotes:
         st.markdown(
-            '<span style="color:#6B6F76;">No suitable quotes found. Try analyzing a video with more comments.</span>',
+            '<span style="color:var(--muted);">No suitable quotes found. Try analyzing a video with more comments.</span>',
             unsafe_allow_html=True,
         )
         return
@@ -1960,7 +1932,7 @@ def _render_report_tab() -> None:
         key="tab_report_download",
     )
     st.markdown(
-        f'<div style="background:#FFFFFF;border:1px solid #E5E3DD;border-radius:8px;padding:24px;margin-top:12px;">'
+        f'<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:24px;margin-top:12px;color:var(--ink);">'
         f'{report_md}'
         f'</div>',
         unsafe_allow_html=True,
@@ -1974,7 +1946,7 @@ def _render_report_tab() -> None:
 def _render_compare_tab() -> None:
     st.markdown('<div class="cl-section-heading">Compare video performance</div>', unsafe_allow_html=True)
     st.markdown(
-        '<p style="font-size:14px;color:#6B6F76;">Compare audience sentiment and viewer feedback between this video and another video.</p>',
+        '<p style="font-size:14px;color:var(--muted);">Compare audience sentiment and viewer feedback between this video and another video.</p>',
         unsafe_allow_html=True,
     )
 
@@ -2009,17 +1981,27 @@ def _render_compare_tab() -> None:
 
         col_v1, col_v2 = st.columns(2)
         with col_v1:
-            st.markdown(f"### {v1.get('title', 'Video 1')}")
-            st.markdown(f"**Channel:** {v1.get('channel', '')}")
-            st.markdown(f"**Sentiment score:** {s1.get('sentiment_score', 0):.0f}/100 ({s1.get('sentiment_label', '')})")
-            st.markdown(f"**Positive:** {s1.get('positive_count_pct', 0):.0f}% · **Negative:** {s1.get('negative_count_pct', 0):.0f}%")
-            st.markdown(f"**Comments analyzed:** {s1.get('total', 0):,}")
+            st.markdown(
+                f'<div class="swiss-card" style="border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);padding:20px;">'
+                f'<h3 style="font-size:18px;font-weight:650;margin-bottom:8px;color:var(--ink);">{v1.get("title", "Video 1")}</h3>'
+                f'<div style="font-size:13px;color:var(--muted);margin-bottom:12px;"><b>Channel:</b> {v1.get("channel", "")}</div>'
+                f'<div style="font-size:14px;margin-bottom:6px;"><b>Sentiment score:</b> {s1.get("sentiment_score", 0):.0f}/100 ({s1.get("sentiment_label", "")})</div>'
+                f'<div style="font-size:14px;margin-bottom:6px;"><b>Positive:</b> {s1.get("positive_count_pct", 0):.0f}% · <b>Negative:</b> {s1.get("negative_count_pct", 0):.0f}%</div>'
+                f'<div style="font-size:13px;color:var(--muted);"><b>Comments analyzed:</b> {s1.get("total", 0):,}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
         with col_v2:
-            st.markdown(f"### {v2.get('title', 'Video 2')}")
-            st.markdown(f"**Channel:** {v2.get('channel', '')}")
-            st.markdown(f"**Sentiment score:** {s2.get('sentiment_score', 0):.0f}/100 ({s2.get('sentiment_label', '')})")
-            st.markdown(f"**Positive:** {s2.get('positive_count_pct', 0):.0f}% · **Negative:** {s2.get('negative_count_pct', 0):.0f}%")
-            st.markdown(f"**Comments analyzed:** {s2.get('total', 0):,}")
+            st.markdown(
+                f'<div class="swiss-card" style="border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);padding:20px;">'
+                f'<h3 style="font-size:18px;font-weight:650;margin-bottom:8px;color:var(--ink);">{v2.get("title", "Video 2")}</h3>'
+                f'<div style="font-size:13px;color:var(--muted);margin-bottom:12px;"><b>Channel:</b> {v2.get("channel", "")}</div>'
+                f'<div style="font-size:14px;margin-bottom:6px;"><b>Sentiment score:</b> {s2.get("sentiment_score", 0):.0f}/100 ({s2.get("sentiment_label", "")})</div>'
+                f'<div style="font-size:14px;margin-bottom:6px;"><b>Positive:</b> {s2.get("positive_count_pct", 0):.0f}% · <b>Negative:</b> {s2.get("negative_count_pct", 0):.0f}%</div>'
+                f'<div style="font-size:13px;color:var(--muted);"><b>Comments analyzed:</b> {s2.get("total", 0):,}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -2027,7 +2009,7 @@ def _render_compare_tab() -> None:
 # ---------------------------------------------------------------------------
 
 def _render_diagnostics_tab() -> None:
-    st.markdown('<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;margin-bottom:6px;">Pipeline diagnostics & API logs</div>', unsafe_allow_html=True)
+    st.markdown('<div class="cl-section-heading" style="margin-bottom:6px;">Pipeline diagnostics & API logs</div>', unsafe_allow_html=True)
     st.markdown(
         '<p style="font-size:14px;color:var(--muted);margin-bottom:20px;">'
         'Live tracking of API requests, latency, rate limits, and batch classification status.'
@@ -2047,19 +2029,19 @@ def _render_diagnostics_tab() -> None:
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     with m_col1:
         st.markdown(
-            f'<div style="background:#FFFFFF;border:1px solid #E1E6E3;border-radius:12px;padding:14px 16px;">'
+            f'<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:14px 16px;">'
             f'<div style="font-size:12px;color:var(--muted);">Classification status</div>'
-            f'<div style="font-size:22px;font-weight:650;color:{"#2F8A5B" if unclass == 0 and total > 0 else "#C2453D"};">{ok_count:,} / {total:,} ok</div>'
-            f'<div style="font-size:12px;color:var(--muted);">{success_rate:.0f}% success rate</div>'
+            f'<div style="font-size:22px;font-weight:650;color:{"var(--pos)" if unclass == 0 and total > 0 else "var(--neg)"};font-variant-numeric:tabular-nums;">{ok_count:,} / {total:,} ok</div>'
+            f'<div style="font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;">{success_rate:.0f}% success rate</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
     with m_col2:
         total_batches = (total + 39) // 40 if total else 0
         st.markdown(
-            f'<div style="background:#FFFFFF;border:1px solid #E1E6E3;border-radius:12px;padding:14px 16px;">'
+            f'<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:14px 16px;">'
             f'<div style="font-size:12px;color:var(--muted);">Batches processed</div>'
-            f'<div style="font-size:22px;font-weight:650;color:var(--ink);">{total_batches} batches</div>'
+            f'<div style="font-size:22px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums;">{total_batches} batches</div>'
             f'<div style="font-size:12px;color:var(--muted);">40 comments / batch</div>'
             f'</div>',
             unsafe_allow_html=True,
@@ -2069,10 +2051,10 @@ def _render_diagnostics_tab() -> None:
         active_disp_delay = GROQ_DELAY if LLM_PROVIDER == "groq" else GEMINI_DELAY
         active_prov_name = "Groq" if LLM_PROVIDER == "groq" else "Gemini"
         st.markdown(
-            f'<div style="background:#FFFFFF;border:1px solid #E1E6E3;border-radius:12px;padding:14px 16px;">'
+            f'<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:14px 16px;">'
             f'<div style="font-size:12px;color:var(--muted);">Active {active_prov_name} model</div>'
-            f'<div style="font-size:17px;font-weight:650;color:#0F766E;word-break:break-all;">{active_disp_model}</div>'
-            f'<div style="font-size:12px;color:var(--muted);">{active_disp_delay}s inter-batch delay</div>'
+            f'<div style="font-size:16px;font-weight:650;color:var(--accent);word-break:break-all;">{active_disp_model}</div>'
+            f'<div style="font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;">{active_disp_delay}s inter-batch delay</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -2080,10 +2062,10 @@ def _render_diagnostics_tab() -> None:
         err_events = [e for e in logs_list if e.get("level") == "ERROR"]
         warn_events = [e for e in logs_list if e.get("level") == "WARNING"]
         st.markdown(
-            f'<div style="background:#FFFFFF;border:1px solid #E1E6E3;border-radius:12px;padding:14px 16px;">'
+            f'<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:14px 16px;">'
             f'<div style="font-size:12px;color:var(--muted);">Diagnostic alerts</div>'
-            f'<div style="font-size:22px;font-weight:650;color:{"#C2453D" if err_events else "#2F8A5B"};">{len(err_events)} errors</div>'
-            f'<div style="font-size:12px;color:var(--muted);">{len(warn_events)} retries/warnings</div>'
+            f'<div style="font-size:22px;font-weight:650;color:{"var(--neg)" if err_events else "var(--pos)"};font-variant-numeric:tabular-nums;">{len(err_events)} errors</div>'
+            f'<div style="font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;">{len(warn_events)} retries/warnings</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -2137,9 +2119,9 @@ def _render_diagnostics_tab() -> None:
     if unclass > 0 or len(err_events) > 0:
         st.markdown(
             """
-            <div style="background:#FDF4F4;border:1px solid #F5C6CB;border-radius:12px;padding:16px 20px;margin:20px 0;">
-              <div style="font-weight:650;font-size:15px;color:#721C24;margin-bottom:6px;">Why did comments fail or return 0%?</div>
-              <ul style="font-size:13px;color:#721C24;line-height:1.6;margin:0;padding-left:20px;">
+            <div style="background:var(--warn-soft);border:1px solid var(--warn-line);border-left:4px solid var(--warn);border-radius:var(--radius-sm);padding:14px 18px;margin:20px 0;color:var(--warn-text);">
+              <div style="font-weight:650;font-size:14px;color:var(--warn-text);margin-bottom:6px;">Why did comments fail or return 0%?</div>
+              <ul style="font-size:13px;color:var(--warn-text);line-height:1.6;margin:0;padding-left:20px;">
                 <li><b>Gemini Free Tier Rate Limits (429 Quota Exceeded):</b> The Google AI Studio free tier limits requests to 15 RPM (requests per minute). 1,000 comments is 25 batches; with small delays, this exhausts the per-minute quota. Fix: Increase delay to 5-6s in Settings or analyze 200–500 comments at a time.</li>
                 <li><b>Safety Filters:</b> Comments flagged for extreme toxicity or severe profanity can cause the safety filter to block a batch response. CommentLens isolates these into the Unclassified group.</li>
                 <li><b>Daily Quotas:</b> Free tier projects have daily limits that reset at midnight Pacific Time (PST).</li>
@@ -2150,7 +2132,7 @@ def _render_diagnostics_tab() -> None:
         )
 
     # Filter & Log Console
-    st.markdown('<div class="h2" style="font-size:18px;font-weight:650;color:#0B4F4A;margin-top:24px;margin-bottom:10px;">Event logs</div>', unsafe_allow_html=True)
+    st.markdown('<div class="cl-section-heading" style="margin-top:24px;margin-bottom:10px;">Event logs</div>', unsafe_allow_html=True)
     f_col1, f_col2 = st.columns([4, 6])
     with f_col1:
         level_filter = st.selectbox("Filter by level", ["ALL", "ERROR", "WARNING", "SUCCESS", "INFO"], key="diag_level_filter")
@@ -2169,23 +2151,23 @@ def _render_diagnostics_tab() -> None:
         log_rows = ""
         for e in filtered_logs:
             lvl = e.get("level", "INFO")
-            color = "#2F8A5B" if lvl == "SUCCESS" else ("#C2453D" if lvl == "ERROR" else ("#D4A017" if lvl == "WARNING" else "#0F766E"))
+            color = "var(--pos)" if lvl == "SUCCESS" else ("var(--neg)" if lvl == "ERROR" else ("var(--warn)" if lvl == "WARNING" else "var(--accent)"))
             dur = f" ({e.get('duration_ms'):.0f}ms)" if e.get("duration_ms") is not None else ""
             msg = e.get("message", "")
-            details_str = f" <span style='color:#667370;'>({json.dumps(e.get('details'))})</span>" if e.get("details") else ""
+            details_str = f" <span style='color:var(--muted);'>({json.dumps(e.get('details'))})</span>" if e.get("details") else ""
             log_rows += f"""
-            <div style="font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px;padding:5px 0;border-bottom:1px solid #F0F4F2;line-height:1.45;">
-              <span style="color:#8A9490;">[{e.get('timestamp')}]</span>
+            <div style="font-family:var(--font-mono);font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--line);line-height:1.45;">
+              <span style="color:var(--faint);">[{e.get('timestamp')}]</span>
               <span style="display:inline-block;width:75px;font-weight:600;color:{color};">[{lvl}]</span>
-              <span style="display:inline-block;width:95px;color:#0B4F4A;font-weight:500;">[{e.get('stage')}]</span>
-              <span style="color:#16211F;">{msg}</span>
-              <span style="color:#667370;">{dur}</span>
+              <span style="display:inline-block;width:95px;color:var(--accent);font-weight:500;">[{e.get('stage')}]</span>
+              <span style="color:var(--ink);">{msg}</span>
+              <span style="color:var(--muted);">{dur}</span>
               {details_str}
             </div>
             """
         st.markdown(
             f"""
-            <div style="background:#FFFFFF;border:1px solid #E1E6E3;border-radius:12px;padding:16px 20px;max-height:480px;overflow-y:auto;">
+            <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:16px 20px;max-height:480px;overflow-y:auto;">
               {log_rows}
             </div>
             """,
