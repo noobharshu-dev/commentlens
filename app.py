@@ -21,6 +21,15 @@ from dotenv import load_dotenv, set_key
 
 load_dotenv()
 
+# Sync Streamlit secrets to os.environ if running on Streamlit Cloud
+try:
+    if hasattr(st, "secrets"):
+        for _k in ["GEMINI_API_KEY", "YOUTUBE_API_KEY", "GEMINI_MODEL", "GEMINI_DELAY_SECONDS"]:
+            if _k in st.secrets and not os.environ.get(_k):
+                os.environ[_k] = str(st.secrets[_k]).strip()
+except Exception:
+    pass
+
 # ---------------------------------------------------------------------------
 # Page config — MUST be first Streamlit call
 # ---------------------------------------------------------------------------
@@ -36,7 +45,13 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 from core.youtube import extract_video_id, get_video_info, fetch_comments, CommentsDisabledError
 from core.cleaning import clean_comments, flag_duplicates, make_batches
-from core.classifier import classify_batch, validate_results, summarize_comments
+from core.classifier import (
+    classify_batch,
+    validate_results,
+    summarize_comments,
+    sanitize_model_name,
+    SUPPORTED_GEMINI_MODELS,
+)
 from core.analysis import (
     aggregate_stats,
     sentiment_timeline,
@@ -99,7 +114,9 @@ for _key, _val in _DEFAULTS.items():
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+_raw_model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+GEMINI_MODEL = sanitize_model_name(_raw_model)
+os.environ["GEMINI_MODEL"] = GEMINI_MODEL
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 GEMINI_DELAY = int(os.getenv("GEMINI_DELAY_SECONDS", "4"))
@@ -217,7 +234,18 @@ def _render_sidebar() -> int:
         st.markdown("---")
 
         st.markdown("**Settings**")
-        st.text_input("Model", value=GEMINI_MODEL, disabled=True, label_visibility="visible")
+        global GEMINI_MODEL
+        model_options = SUPPORTED_GEMINI_MODELS
+        curr_idx = model_options.index(GEMINI_MODEL) if GEMINI_MODEL in model_options else 0
+        selected_model = st.selectbox(
+            "Gemini Model",
+            options=model_options,
+            index=curr_idx,
+            help="Default: gemini-3.5-flash-lite (active on Google GenAI API)",
+            key="sb_model_selector",
+        )
+        GEMINI_MODEL = selected_model
+        os.environ["GEMINI_MODEL"] = selected_model
         limit = st.slider(
             "Default comments",
             min_value=100,

@@ -30,11 +30,37 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Environment defaults
+# Environment defaults & Models
 # ---------------------------------------------------------------------------
 
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
+SUPPORTED_GEMINI_MODELS = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
+]
+
+
+def sanitize_model_name(name: str | None) -> str:
+    """
+    Ensure deprecated or retired models (such as gemini-2.5-flash, gemini-2.0-flash,
+    gemini-1.5-flash) are automatically replaced with active gemini-3.5-flash-lite.
+    """
+    if not name or not isinstance(name, str):
+        return DEFAULT_GEMINI_MODEL
+    clean = name.strip()
+    if (
+        clean in ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro")
+        or "2.5" in clean
+        or "2.0" in clean
+        or "1.5" in clean
+    ):
+        return DEFAULT_GEMINI_MODEL
+    return clean
+
+
 GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+GEMINI_MODEL: str = sanitize_model_name(os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL))
 GEMINI_DELAY_SECONDS: float = float(os.environ.get("GEMINI_DELAY_SECONDS", 4))
 
 # ---------------------------------------------------------------------------
@@ -236,8 +262,9 @@ def classify_batch(
         temperature=0.1,
     )
 
-    models_to_try = [model_name]
-    for fallback in ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+    active_model = sanitize_model_name(model_name)
+    models_to_try = [active_model]
+    for fallback in SUPPORTED_GEMINI_MODELS:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 
@@ -275,6 +302,7 @@ def classify_batch(
                 session_diagnostics.warning("CLASSIFY", f"JSON decode error on attempt {attempt}: {exc}")
             except Exception as exc:  # noqa: BLE001
                 err_str = str(exc)
+                err_lower = err_str.lower()
                 is_fatal, reason = is_fatal_gemini_error(exc)
                 if is_fatal:
                     session_diagnostics.error(
@@ -284,7 +312,7 @@ def classify_batch(
                     )
                     raise ValueError(reason) from exc
 
-                if "404" in err_str or "NOT_FOUND" in err_str or "503" in err_str:
+                if any(x in err_lower for x in ["404", "not_found", "not found", "no longer available", "503", "unsupported"]):
                     logger.warning("Model %s unavailable, trying next model: %s", model_candidate, exc)
                     session_diagnostics.warning(
                         "CLASSIFY",
@@ -450,8 +478,9 @@ def summarize_comments(
         "Summary:"
     )
 
-    models_to_try = [model_name]
-    for fallback in ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+    active_model = sanitize_model_name(model_name)
+    models_to_try = [active_model]
+    for fallback in SUPPORTED_GEMINI_MODELS:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 

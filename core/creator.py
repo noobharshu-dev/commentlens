@@ -21,6 +21,8 @@ from typing import Optional
 from google import genai
 from google.genai import types
 
+from core.classifier import sanitize_model_name, SUPPORTED_GEMINI_MODELS
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -214,8 +216,9 @@ def answer_question(
         types.Content(role="user", parts=[types.Part(text=user_message)])
     )
 
-    models_to_try = [model_name]
-    for fallback in ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+    active_model = sanitize_model_name(model_name)
+    models_to_try = [active_model]
+    for fallback in SUPPORTED_GEMINI_MODELS:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 

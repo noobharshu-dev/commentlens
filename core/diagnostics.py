@@ -145,25 +145,34 @@ def test_gemini_connection(client, model_name: str = "gemini-3.5-flash-lite") ->
         message: str
         details: dict
     """
+    clean_model = model_name.strip() if model_name else "gemini-3.5-flash-lite"
+    if (
+        clean_model in ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro")
+        or "2.5" in clean_model
+        or "2.0" in clean_model
+        or "1.5" in clean_model
+    ):
+        clean_model = "gemini-3.5-flash-lite"
+
     t0 = time.time()
     try:
         response = client.models.generate_content(
-            model=model_name,
+            model=clean_model,
             contents="Ping. Reply with one word: Pong.",
         )
         latency = (time.time() - t0) * 1000
         reply = response.text.strip() if response and response.text else "No text"
         session_diagnostics.success(
             "HEALTH",
-            f"Gemini connection OK ({model_name}) in {latency:.0f}ms",
+            f"Gemini connection OK ({clean_model}) in {latency:.0f}ms",
             {"reply": reply, "latency_ms": round(latency, 1)},
             duration_ms=latency,
         )
         return {
             "status": "ok",
             "latency_ms": round(latency, 1),
-            "model": model_name,
-            "message": f"Successfully connected to Gemini API ({model_name}) in {latency:.0f}ms.",
+            "model": clean_model,
+            "message": f"Successfully connected to Gemini API ({clean_model}) in {latency:.0f}ms.",
             "details": {"reply": reply},
         }
     except Exception as exc:
@@ -172,14 +181,14 @@ def test_gemini_connection(client, model_name: str = "gemini-3.5-flash-lite") ->
         err_msg = reason if is_fatal else str(exc)
         session_diagnostics.error(
             "HEALTH",
-            f"Gemini connection test failed ({model_name}): {err_msg}",
+            f"Gemini connection test failed ({clean_model}): {err_msg}",
             {"error": str(exc), "fatal": is_fatal},
             duration_ms=latency,
         )
         return {
             "status": "error",
             "latency_ms": round(latency, 1),
-            "model": model_name,
+            "model": clean_model,
             "message": f"Gemini API test failed: {err_msg}",
             "details": {"error": str(exc), "is_fatal": is_fatal},
         }

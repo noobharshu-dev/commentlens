@@ -43,3 +43,23 @@ def test_fatal_error_detection():
     # Recoverable / network glitch
     is_fatal, reason = is_fatal_gemini_error(Exception("Temporary connection reset by peer"))
     assert is_fatal is False
+
+
+def test_sanitize_model_name():
+    from core.classifier import sanitize_model_name, SUPPORTED_GEMINI_MODELS, DEFAULT_GEMINI_MODEL
+
+    assert DEFAULT_GEMINI_MODEL == "gemini-3.5-flash-lite"
+    assert sanitize_model_name("gemini-2.5-flash") == "gemini-3.5-flash-lite"
+    assert sanitize_model_name("gemini-2.0-flash") == "gemini-3.5-flash-lite"
+    assert sanitize_model_name("gemini-1.5-flash") == "gemini-3.5-flash-lite"
+    assert sanitize_model_name("") == "gemini-3.5-flash-lite"
+    assert sanitize_model_name(None) == "gemini-3.5-flash-lite"
+    assert sanitize_model_name("gemini-3.8-flash") == "gemini-3.8-flash"
+    assert sanitize_model_name("gemini-3.5-flash-lite") == "gemini-3.5-flash-lite"
+
+    # Ensure no deprecated models in supported list
+    for m in SUPPORTED_GEMINI_MODELS:
+        assert "2.5" not in m
+        assert "2.0" not in m
+        assert "1.5" not in m
+    assert SUPPORTED_GEMINI_MODELS[0] == "gemini-3.5-flash-lite"
