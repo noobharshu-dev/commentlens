@@ -650,6 +650,11 @@ def _render_empty_state(sidebar_limit: int) -> None:
         if not url_input.strip():
             st.error("Please enter a YouTube video link.")
         else:
+            try:
+                vid = extract_video_id(url_input.strip())
+                st.query_params["v"] = vid
+            except Exception:
+                pass
             _run_analysis(url_input.strip(), limit_val)
 
 
@@ -781,16 +786,28 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
             read_cnt = live_stats.get("read", 0)
             tot_cnt = live_stats.get("total", 1000)
             rem = max(tot_cnt - read_cnt, 0)
+            
+            live_segs = []
+            if pos > 0:
+                live_segs.append(f'<div class="seg" style="flex:{pos};background:var(--pos);height:44px;"></div>')
+            if neu > 0:
+                live_segs.append(f'<div class="seg" style="flex:{neu};background:var(--neu);height:44px;"></div>')
+            if mix > 0:
+                live_segs.append(f'<div class="seg" style="flex:{mix};background:var(--mix);height:44px;"></div>')
+            if neg > 0:
+                live_segs.append(f'<div class="seg" style="flex:{neg};background:var(--neg);height:44px;"></div>')
+            if rem > 0:
+                live_segs.append(f'<div class="seg" style="flex:{rem};background:repeating-linear-gradient(135deg,var(--line) 0 6px,var(--paper) 6px 12px);height:44px;"></div>')
+            if not live_segs:
+                live_segs.append('<div class="seg" style="flex:1;background:var(--line);height:44px;"></div>')
+            live_bar_html = "".join(live_segs)
+
             right_html = f"""
             <div>
               <div class="h2" style="font-size:18px;font-weight:650;color:var(--ink);">Read so far</div>
               <p class="note" style="margin:4px 0 20px;color:var(--muted);font-size:13px;">{read_cnt:,} of {tot_cnt:,} comments. The bar grows as each batch finishes.</p>
               <div class="mood">
-                <div class="seg" style="flex:{max(pos, 1)};background:var(--pos);height:44px;"></div>
-                <div class="seg" style="flex:{max(neu, 1)};background:var(--neu);height:44px;"></div>
-                <div class="seg" style="flex:{max(mix, 1)};background:var(--mix);height:44px;"></div>
-                <div class="seg" style="flex:{max(neg, 1)};background:var(--neg);height:44px;"></div>
-                <div class="seg" style="flex:{max(rem, 0)};background:repeating-linear-gradient(135deg,var(--line) 0 6px,var(--paper) 6px 12px);height:44px;"></div>
+                {live_bar_html}
               </div>
               <div style="display:flex;gap:36px;margin-top:20px;">
                 <div><b class="tab" style="font-size:24px;font-family:var(--font-sans);color:var(--ink);">{pos:,}</b><div class="note" style="color:var(--muted);font-size:13px;">positive</div></div>
@@ -2459,6 +2476,27 @@ def _render_results() -> None:
 
 def main() -> None:
     sidebar_limit = _render_sidebar()
+
+    # Route / deep-link handler (Approach A: ?v=[video_id])
+    query_vid = st.query_params.get("v")
+    if query_vid and not st.session_state.analyzed:
+        cached = load_cache(query_vid)
+        if cached:
+            st.session_state.video_id = query_vid
+            st.session_state.video_info = cached.get("video", {})
+            st.session_state.comments = cached.get("comments", [])
+            st.session_state.summary = cached.get("summary", "")
+            themes_raw = cached.get("themes", {})
+            if isinstance(themes_raw, dict):
+                st.session_state.themes = sorted(themes_raw.items(), key=lambda x: x[1], reverse=True)[:8]
+            else:
+                st.session_state.themes = themes_raw or []
+            st.session_state.stats = aggregate_stats(st.session_state.comments)
+            st.session_state.cache_loaded = True
+            st.session_state.analyzed = True
+            st.rerun()
+        elif query_vid in ("dQw4w9WgXcQ", "sample_demo"):
+            _load_sample_demo()
 
     if not st.session_state.analyzed:
         _render_empty_state(sidebar_limit)
