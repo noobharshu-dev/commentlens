@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 GEMINI_DELAY_SECONDS: float = float(os.environ.get("GEMINI_DELAY_SECONDS", 4))
 
 # ---------------------------------------------------------------------------
@@ -237,7 +237,7 @@ def classify_batch(
     )
 
     models_to_try = [model_name]
-    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-3.5-flash-lite"]:
+    for fallback in ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 
@@ -451,7 +451,7 @@ def summarize_comments(
     )
 
     models_to_try = [model_name]
-    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-3.5-flash-lite"]:
+    for fallback in ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 

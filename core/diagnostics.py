@@ -134,7 +134,7 @@ def is_fatal_gemini_error(exc: Exception) -> tuple[bool, str]:
     return False, ""
 
 
-def test_gemini_connection(client, model_name: str = "gemini-2.5-flash") -> dict:
+def test_gemini_connection(client, model_name: str = "gemini-3.5-flash-lite") -> dict:
     """
     Test Gemini API connectivity with a minimal ping prompt.
 
