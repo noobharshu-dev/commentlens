@@ -48,6 +48,7 @@ from core.analysis import (
 from core.creator import pick_top_quotes, answer_question, build_creator_report
 from core.export import export_csv, export_filename
 from core.cache import load_cache, save_cache, clear_cache
+from core.diagnostics import session_diagnostics, test_gemini_connection, test_youtube_connection
 
 import google.genai as genai
 
@@ -87,6 +88,8 @@ _DEFAULTS: dict = {
     "theme_filter": None,
     "copy_status": None,
     "selected_cid": None,
+    "diagnostics_logs": [],
+    "last_analysis_error": None,
 }
 
 for _key, _val in _DEFAULTS.items():
@@ -274,6 +277,25 @@ def _render_sidebar() -> int:
                     st.success("API keys updated.")
                     st.rerun()
 
+            st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+            if st.button("Test API Connections", key="test_keys_btn", use_container_width=True):
+                with st.spinner("Testing API connections..."):
+                    yt_res = test_youtube_connection()
+                    if yt_res["status"] == "ok":
+                        st.success(yt_res["message"])
+                    else:
+                        st.error(yt_res["message"])
+
+                    try:
+                        g_client = _gemini_client()
+                        gem_res = test_gemini_connection(g_client, GEMINI_MODEL)
+                        if gem_res["status"] == "ok":
+                            st.success(gem_res["message"])
+                        else:
+                            st.error(gem_res["message"])
+                    except Exception as exc:
+                        st.error(f"Gemini client setup error: {exc}")
+
         st.markdown("---")
 
         # Cache management
@@ -364,6 +386,30 @@ def _render_empty_state(sidebar_limit: int) -> None:
             '</div>',
             unsafe_allow_html=True,
         )
+
+    with st.expander("API connection test & live diagnostics", expanded=False):
+        st.markdown('<div class="note" style="margin-bottom:8px;">Verify your API credentials and rate limits before launching an analysis:</div>', unsafe_allow_html=True)
+        col_test_yt, col_test_gem = st.columns(2)
+        with col_test_yt:
+            if st.button("Test YouTube API Key", key="lp_test_yt", use_container_width=True):
+                with st.spinner("Testing YouTube API..."):
+                    res = test_youtube_connection()
+                    if res["status"] == "ok":
+                        st.success(res["message"])
+                    else:
+                        st.error(res["message"])
+        with col_test_gem:
+            if st.button("Test Gemini API Key", key="lp_test_gemini", use_container_width=True):
+                try:
+                    g_client = _gemini_client()
+                    with st.spinner("Testing Gemini API..."):
+                        res = test_gemini_connection(g_client, GEMINI_MODEL)
+                        if res["status"] == "ok":
+                            st.success(res["message"])
+                        else:
+                            st.error(res["message"])
+                except Exception as exc:
+                    st.error(f"Gemini key error: {exc}")
 
     st.markdown("<div style='height:36px;'></div>", unsafe_allow_html=True)
 
@@ -479,6 +525,10 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
     steps_placeholder = st.empty()
     bar_placeholder = st.empty()
     status_placeholder = st.empty()
+    logs_placeholder = st.empty()
+
+    session_diagnostics.clear()
+    session_diagnostics.info("PIPELINE", f"Starting analysis pipeline for video ID: {video_id} (requested limit: {limit})")
 
     def _render_analyzing_view(active_step: int, step_labels: list[str], progress_val: float, live_stats: dict = None) -> None:
         steps_html = ""
@@ -551,6 +601,22 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
             unsafe_allow_html=True,
         )
         bar_placeholder.progress(progress_val)
+
+        # Live diagnostic stream
+        recent_evs = session_diagnostics.events[-6:]
+        if recent_evs:
+            ev_lines = ""
+            for ev in recent_evs:
+                c_hex = "#2F8A5B" if ev.level == "SUCCESS" else ("#C2453D" if ev.level == "ERROR" else ("#D4A017" if ev.level == "WARNING" else "#0F766E"))
+                dur_text = f" · {ev.duration_ms:.0f}ms" if ev.duration_ms is not None else ""
+                ev_lines += f'<div style="font-family:monospace;font-size:12px;margin:3px 0;line-height:1.4;"><span style="color:#667370;">[{ev.timestamp}]</span> <b style="color:{c_hex};">[{ev.stage}]</b> <span style="color:#16211F;">{ev.message}</span><span style="color:#667370;">{dur_text}</span></div>'
+            logs_placeholder.markdown(
+                f'<div style="margin-top:18px;padding:12px 16px;background:#FFFFFF;border:1px solid #E1E6E3;border-radius:10px;">'
+                f'<div style="font-size:11px;font-weight:600;color:#0F766E;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">Live API & Pipeline Diagnostics</div>'
+                f'{ev_lines}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
     step_labels = [
         "Fetching comments",
@@ -662,13 +728,27 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
                     else:
                         c["classification_status"] = "failed"
                         failed_count += 1
+        except ValueError as exc:
+            err_msg = str(exc)
+            session_diagnostics.error("CLASSIFY", f"Fatal error in batch {batch_idx + 1}: {err_msg}")
+            st.session_state["last_analysis_error"] = err_msg
+            for c in comments[batch_idx * 40:]:
+                c["classification_status"] = "failed"
+            failed_count = len(comments) - (pos_live + neg_live + mix_live + neu_live)
+            break
         except Exception as exc:
             for c in batch:
                 c["classification_status"] = "failed"
             failed_count += len(batch)
+            session_diagnostics.error("CLASSIFY", f"Batch {batch_idx + 1} failed: {exc}")
             logger.warning("Batch %d failed: %s", batch_idx + 1, exc)
 
     # 4e — summarize
+    st.session_state["diagnostics_logs"] = session_diagnostics.to_dict_list()
+    if failed_count == len(comments) and not st.session_state.get("last_analysis_error"):
+        st.session_state["last_analysis_error"] = (
+            "All comment batches failed classification. Check the Diagnostics & logs tab for exact error codes and solutions."
+        )
     step_labels[2] = f"Classified {len(comments):,} comments"
     live_stats = {
         "pos": pos_live,
@@ -818,6 +898,14 @@ def _render_header() -> None:
             else "unknown date"
         )
         st.info(f"Loaded from cache, analyzed on {date_str}.")
+
+    last_err = st.session_state.get("last_analysis_error")
+    if last_err:
+        st.error(
+            f"⚠️ **Analysis Alert:** {last_err}\n\n"
+            "This caused sentiment scores and category counts to show 0. "
+            "Please check the **'Diagnostics & logs'** tab below to view full details and troubleshooting guidance."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1797,6 +1885,177 @@ def _render_compare_tab() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Results — Tab 6: Diagnostics & Live Logs
+# ---------------------------------------------------------------------------
+
+def _render_diagnostics_tab() -> None:
+    st.markdown('<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;margin-bottom:6px;">Pipeline diagnostics & API logs</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<p style="font-size:14px;color:var(--muted);margin-bottom:20px;">'
+        'Live tracking of API requests, latency, rate limits, and batch classification status.'
+        '</p>',
+        unsafe_allow_html=True,
+    )
+
+    stats = st.session_state.stats or {}
+    total = stats.get("total", 0)
+    unclass = stats.get("unclassified_count", 0)
+    ok_count = max(0, total - unclass)
+    success_rate = (ok_count / max(total, 1)) * 100
+
+    logs_list = st.session_state.get("diagnostics_logs") or session_diagnostics.to_dict_list()
+
+    # Metric summary row
+    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+    with m_col1:
+        st.markdown(
+            f'<div style="background:#FFFFFF;border:1px solid #E1E6E3;border-radius:12px;padding:14px 16px;">'
+            f'<div style="font-size:12px;color:var(--muted);">Classification status</div>'
+            f'<div style="font-size:22px;font-weight:650;color:{"#2F8A5B" if unclass == 0 and total > 0 else "#C2453D"};">{ok_count:,} / {total:,} ok</div>'
+            f'<div style="font-size:12px;color:var(--muted);">{success_rate:.0f}% success rate</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    with m_col2:
+        total_batches = (total + 39) // 40 if total else 0
+        st.markdown(
+            f'<div style="background:#FFFFFF;border:1px solid #E1E6E3;border-radius:12px;padding:14px 16px;">'
+            f'<div style="font-size:12px;color:var(--muted);">Batches processed</div>'
+            f'<div style="font-size:22px;font-weight:650;color:var(--ink);">{total_batches} batches</div>'
+            f'<div style="font-size:12px;color:var(--muted);">40 comments / batch</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    with m_col3:
+        st.markdown(
+            f'<div style="background:#FFFFFF;border:1px solid #E1E6E3;border-radius:12px;padding:14px 16px;">'
+            f'<div style="font-size:12px;color:var(--muted);">Active Gemini model</div>'
+            f'<div style="font-size:20px;font-weight:650;color:#0F766E;">{GEMINI_MODEL}</div>'
+            f'<div style="font-size:12px;color:var(--muted);">{GEMINI_DELAY}s inter-batch delay</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    with m_col4:
+        err_events = [e for e in logs_list if e.get("level") == "ERROR"]
+        warn_events = [e for e in logs_list if e.get("level") == "WARNING"]
+        st.markdown(
+            f'<div style="background:#FFFFFF;border:1px solid #E1E6E3;border-radius:12px;padding:14px 16px;">'
+            f'<div style="font-size:12px;color:var(--muted);">Diagnostic alerts</div>'
+            f'<div style="font-size:22px;font-weight:650;color:{"#C2453D" if err_events else "#2F8A5B"};">{len(err_events)} errors</div>'
+            f'<div style="font-size:12px;color:var(--muted);">{len(warn_events)} retries/warnings</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
+
+    # API Connection Diagnostics Tool
+    with st.expander("Test API connectivity now", expanded=(unclass > 0 or len(err_events) > 0)):
+        st.markdown('<div class="note" style="margin-bottom:10px;">Run a lightweight ping to verify your API credentials directly:</div>', unsafe_allow_html=True)
+        t_col1, t_col2 = st.columns(2)
+        with t_col1:
+            if st.button("Ping Gemini API", key="diag_test_gemini", use_container_width=True):
+                try:
+                    g_client = _gemini_client()
+                    with st.spinner("Testing Gemini API connection..."):
+                        res = test_gemini_connection(g_client, GEMINI_MODEL)
+                        if res["status"] == "ok":
+                            st.success(f"✓ {res['message']}")
+                        else:
+                            st.error(f"✗ {res['message']}")
+                            if res.get("details"):
+                                st.code(json.dumps(res["details"], indent=2))
+                except Exception as exc:
+                    st.error(f"Gemini client setup error: {exc}")
+        with t_col2:
+            if st.button("Ping YouTube Data API", key="diag_test_yt", use_container_width=True):
+                with st.spinner("Testing YouTube API connection..."):
+                    res = test_youtube_connection()
+                    if res["status"] == "ok":
+                        st.success(f"✓ {res['message']}")
+                    else:
+                        st.error(f"✗ {res['message']}")
+                        if res.get("details"):
+                            st.code(json.dumps(res["details"], indent=2))
+
+    # Error analysis guide if failures occurred
+    if unclass > 0 or len(err_events) > 0:
+        st.markdown(
+            """
+            <div style="background:#FDF4F4;border:1px solid #F5C6CB;border-radius:12px;padding:16px 20px;margin:20px 0;">
+              <div style="font-weight:650;font-size:15px;color:#721C24;margin-bottom:6px;">Why did comments fail or return 0%?</div>
+              <ul style="font-size:13px;color:#721C24;line-height:1.6;margin:0;padding-left:20px;">
+                <li><b>Gemini Free Tier Rate Limits (429 Quota Exceeded):</b> The Google AI Studio free tier limits requests to 15 RPM (requests per minute). 1,000 comments is 25 batches; with small delays, this exhausts the per-minute quota. Fix: Increase delay to 5-6s in Settings or analyze 200–500 comments at a time.</li>
+                <li><b>Safety Filters:</b> Comments flagged for extreme toxicity or severe profanity can cause the safety filter to block a batch response. CommentLens isolates these into the Unclassified group.</li>
+                <li><b>Daily Quotas:</b> Free tier projects have daily limits that reset at midnight Pacific Time (PST).</li>
+              </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # Filter & Log Console
+    st.markdown('<div class="h2" style="font-size:18px;font-weight:650;color:#0B4F4A;margin-top:24px;margin-bottom:10px;">Event logs</div>', unsafe_allow_html=True)
+    f_col1, f_col2 = st.columns([4, 6])
+    with f_col1:
+        level_filter = st.selectbox("Filter by level", ["ALL", "ERROR", "WARNING", "SUCCESS", "INFO"], key="diag_level_filter")
+    with f_col2:
+        search_filter = st.text_input("Search logs", placeholder="Filter by text...", key="diag_search_filter")
+
+    filtered_logs = logs_list
+    if level_filter != "ALL":
+        filtered_logs = [e for e in filtered_logs if e.get("level") == level_filter]
+    if search_filter:
+        s_low = search_filter.lower()
+        filtered_logs = [e for e in filtered_logs if s_low in str(e).lower()]
+
+    # Render styled log console
+    if filtered_logs:
+        log_rows = ""
+        for e in filtered_logs:
+            lvl = e.get("level", "INFO")
+            color = "#2F8A5B" if lvl == "SUCCESS" else ("#C2453D" if lvl == "ERROR" else ("#D4A017" if lvl == "WARNING" else "#0F766E"))
+            dur = f" ({e.get('duration_ms'):.0f}ms)" if e.get("duration_ms") is not None else ""
+            msg = e.get("message", "")
+            details_str = f" <span style='color:#667370;'>({json.dumps(e.get('details'))})</span>" if e.get("details") else ""
+            log_rows += f"""
+            <div style="font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px;padding:5px 0;border-bottom:1px solid #F0F4F2;line-height:1.45;">
+              <span style="color:#8A9490;">[{e.get('timestamp')}]</span>
+              <span style="display:inline-block;width:75px;font-weight:600;color:{color};">[{lvl}]</span>
+              <span style="display:inline-block;width:95px;color:#0B4F4A;font-weight:500;">[{e.get('stage')}]</span>
+              <span style="color:#16211F;">{msg}</span>
+              <span style="color:#667370;">{dur}</span>
+              {details_str}
+            </div>
+            """
+        st.markdown(
+            f"""
+            <div style="background:#FFFFFF;border:1px solid #E1E6E3;border-radius:12px;padding:16px 20px;max-height:480px;overflow-y:auto;">
+              {log_rows}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown('<div class="note" style="color:var(--muted);padding:14px 0;">No matching log events recorded.</div>', unsafe_allow_html=True)
+
+    # Actions: Download & Clear
+    st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
+    d_col1, d_col2 = st.columns([3, 7])
+    with d_col1:
+        full_text = session_diagnostics.to_formatted_text()
+        vid_str = st.session_state.video_id or "run"
+        st.download_button(
+            "Download full diagnostics (.txt)",
+            data=full_text,
+            file_name=f"commentlens_diagnostics_{vid_str}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+            mime="text/plain",
+            key="dl_diag_logs_btn",
+            use_container_width=True,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Results — full layout
 # ---------------------------------------------------------------------------
 
@@ -1809,13 +2068,14 @@ def _render_results() -> None:
     _render_timeline()
     st.markdown("<div style='height:24px;'></div>", unsafe_allow_html=True)
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
         [
             "Explore comments",
             "Ask the comments",
             "Top quotes",
             "Creator report",
             "Compare videos",
+            "Diagnostics & logs",
         ]
     )
     with tab1:
@@ -1828,6 +2088,8 @@ def _render_results() -> None:
         _render_report_tab()
     with tab5:
         _render_compare_tab()
+    with tab6:
+        _render_diagnostics_tab()
 
 
 # ---------------------------------------------------------------------------

@@ -23,6 +23,8 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+from core.diagnostics import session_diagnostics, is_fatal_gemini_error
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -243,31 +245,63 @@ def classify_batch(
 
     for model_candidate in models_to_try:
         for attempt, wait in enumerate(backoff_seconds, start=1):
+            t0 = time.time()
             try:
+                session_diagnostics.info(
+                    "CLASSIFY",
+                    f"Classifying batch of {len(batch)} comments using {model_candidate} (attempt {attempt}/{len(backoff_seconds)})",
+                )
                 response = client.models.generate_content(
                     model=model_candidate,
                     contents=user_prompt,
                     config=generation_config,
                 )
-                raw_text = response.text.strip()
+                raw_text = response.text.strip() if response and response.text else ""
                 results: list[dict] = json.loads(raw_text)
                 if isinstance(results, list):
+                    latency = (time.time() - t0) * 1000
+                    session_diagnostics.success(
+                        "CLASSIFY",
+                        f"Batch of {len(results)} comments classified using {model_candidate} in {latency:.0f}ms",
+                        duration_ms=latency,
+                    )
                     if delay > 0:
                         time.sleep(delay)
                     return results
                 logger.warning("Gemini returned non-list JSON on attempt %d.", attempt)
+                session_diagnostics.warning("CLASSIFY", f"Gemini returned non-list JSON on attempt {attempt}")
             except json.JSONDecodeError as exc:
                 logger.warning("JSON decode error on attempt %d: %s", attempt, exc)
+                session_diagnostics.warning("CLASSIFY", f"JSON decode error on attempt {attempt}: {exc}")
             except Exception as exc:  # noqa: BLE001
                 err_str = str(exc)
+                is_fatal, reason = is_fatal_gemini_error(exc)
+                if is_fatal:
+                    session_diagnostics.error(
+                        "CLASSIFY",
+                        f"Fatal Gemini API error: {reason}",
+                        details={"model": model_candidate, "error": err_str},
+                    )
+                    raise ValueError(reason) from exc
+
                 if "404" in err_str or "NOT_FOUND" in err_str or "503" in err_str:
                     logger.warning("Model %s unavailable, trying next model: %s", model_candidate, exc)
+                    session_diagnostics.warning(
+                        "CLASSIFY",
+                        f"Model {model_candidate} unavailable ({exc}); switching to fallback model...",
+                    )
                     break
+
                 logger.warning("Gemini API error on attempt %d with %s: %s", attempt, model_candidate, exc)
+                session_diagnostics.warning(
+                    "CLASSIFY",
+                    f"Attempt {attempt} failed on {model_candidate}: {exc}",
+                )
 
             if attempt < len(backoff_seconds):
                 time.sleep(wait)
 
+    session_diagnostics.error("CLASSIFY", f"Batch of {len(batch)} comments failed across all attempted models.")
     logger.error("classify_batch failed across all models.")
     return None
 
@@ -421,15 +455,23 @@ def summarize_comments(
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 
+    session_diagnostics.info("SUMMARIZE", f"Starting summary generation with {len(sample)} sample comments...")
     for model_candidate in models_to_try:
+        t0 = time.time()
         try:
             response = client.models.generate_content(
                 model=model_candidate,
                 contents=prompt,
                 config=types.GenerateContentConfig(temperature=0.3),
             )
-            return response.text.strip()
+            dur = (time.time() - t0) * 1000
+            txt = response.text.strip() if response and response.text else "Summary empty"
+            session_diagnostics.success("SUMMARIZE", f"Generated summary using {model_candidate} in {dur:.0f}ms", duration_ms=dur)
+            return txt
         except Exception as exc:  # noqa: BLE001
+            dur = (time.time() - t0) * 1000
+            session_diagnostics.warning("SUMMARIZE", f"Summary attempt failed on {model_candidate} ({exc})", duration_ms=dur)
             logger.warning("summarize_comments failed with %s: %s", model_candidate, exc)
 
+    session_diagnostics.error("SUMMARIZE", "All model candidates failed to generate summary.")
     return "Summary could not be generated."

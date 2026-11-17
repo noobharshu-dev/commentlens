@@ -25,6 +25,8 @@ from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from core.diagnostics import session_diagnostics
+
 load_dotenv()
 
 # ---------------------------------------------------------------------------
@@ -174,6 +176,7 @@ def get_video_info(video_id: str, api_key: Optional[str] = None) -> dict:
         views        : int
         comment_count: int
     """
+    session_diagnostics.info("FETCH", f"Fetching metadata for YouTube video: {video_id}")
     client = _build_client(api_key)
     try:
         response = (
@@ -186,6 +189,7 @@ def get_video_info(video_id: str, api_key: Optional[str] = None) -> dict:
 
     items = response.get("items", [])
     if not items:
+        session_diagnostics.error("FETCH", f"No video found for ID {video_id!r}")
         raise ValueError(
             f"No video found for ID {video_id!r}. Check the ID or ensure the video is public."
         )
@@ -194,12 +198,17 @@ def get_video_info(video_id: str, api_key: Optional[str] = None) -> dict:
     snippet = item.get("snippet", {})
     stats = item.get("statistics", {})
 
-    return {
+    info = {
         "title": snippet.get("title", "Unknown Title"),
         "channel": snippet.get("channelTitle", "Unknown Channel"),
         "views": int(stats.get("viewCount", 0)),
         "comment_count": int(stats.get("commentCount", 0)),
     }
+    session_diagnostics.success(
+        "FETCH",
+        f"Retrieved video info: '{info['title']}' ({info['views']:,} views, {info['comment_count']:,} comments)",
+    )
+    return info
 
 
 def fetch_comments(
@@ -234,6 +243,7 @@ def fetch_comments(
     ------
     CommentsDisabledError : if the video has comments disabled.
     """
+    session_diagnostics.info("FETCH", f"Starting comment fetch for video {video_id} (limit={limit})...")
     client = _build_client(api_key)
     comments: list[dict] = []
 
@@ -307,4 +317,8 @@ def fetch_comments(
     except HttpError as exc:
         _handle_http_error(exc, video_id)
 
+    session_diagnostics.success(
+        "FETCH",
+        f"Comment fetch complete. Total retrieved: {len(comments):,} comments.",
+    )
     return comments
