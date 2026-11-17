@@ -13,18 +13,21 @@ summarize_comments(top_comments, theme_counts, client, model_name) -> str
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 import re
 import time
-from typing import Optional
+from typing import Callable, Optional, Any
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
 from core.diagnostics import session_diagnostics, is_fatal_gemini_error, is_fatal_groq_error
+from core.cleaning import make_batches
+from core.key_pool import GroqKeyPool
 
 load_dotenv()
 
@@ -604,6 +607,195 @@ def validate_results(results: list[dict], batch: list[dict]) -> list[dict]:
             validated.append(default)
 
     return validated
+
+
+async def classify_batches_async(
+    comments: list[dict],
+    key_pool: GroqKeyPool,
+    model_name: str = DEFAULT_GROQ_MODEL,
+    batch_size: int = 20,
+    on_batch_complete: Optional[Callable[[list[dict], dict], None]] = None,
+) -> list[dict]:
+    """
+    Classify comments asynchronously using a pool of Groq API keys.
+    Distributes batches across healthy keys, automatically recovers from HTTP 429
+    by cooling rate-limited keys and requeueing batches, and emits detailed diagnostics.
+    """
+    if not comments:
+        return []
+
+    batches = list(make_batches(comments, size=batch_size))
+    total_batches = len(batches)
+    queue: asyncio.Queue[tuple[int, list[dict], int]] = asyncio.Queue()
+
+    for idx, b in enumerate(batches):
+        queue.put_nowait((idx, b, 0))  # (batch_idx, batch, attempt_count)
+
+    system_instruction, _ = build_prompt([])
+    full_system = (
+        system_instruction
+        + "\n\nCRITICAL INSTRUCTION: Return a JSON object with a single key 'comments' containing the array of objects matching the schema. Example: {\"comments\": [...]}. Do not include markdown or extra commentary."
+    )
+
+    stats_lock = asyncio.Lock()
+    live_stats = {
+        "pos": 0,
+        "neu": 0,
+        "mix": 0,
+        "neg": 0,
+        "ques": 0,
+        "sugg": 0,
+        "read": 0,
+        "total": len(comments),
+    }
+
+    # Worker concurrency bounded by available keys in the pool (min 1, max 5)
+    num_workers = min(max(1, key_pool.size), 5)
+
+    async def worker(worker_id: int) -> None:
+        while True:
+            try:
+                batch_idx, batch, attempts = await queue.get()
+            except asyncio.CancelledError:
+                break
+
+            slot = None
+            try:
+                slot = key_pool.acquire_key(wait_if_cooling=False)
+                if slot.is_cooling:
+                    wait_time = min(slot.cooldown_remaining, 5.0)
+                    if wait_time > 0:
+                        await asyncio.sleep(wait_time)
+
+                client = slot.get_async_client()
+                _, user_prompt = build_prompt(batch)
+
+                session_diagnostics.info(
+                    "CLASSIFY",
+                    f"[Key {slot.index} {slot.masked_key}] Classifying batch {batch_idx + 1}/{total_batches} ({len(batch)} comments) via {model_name}",
+                    details={"key_index": slot.index, "batch": batch_idx + 1, "model": model_name},
+                )
+                t0 = time.time()
+
+                response = await client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": full_system},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.1,
+                )
+
+                latency = (time.time() - t0) * 1000
+                raw_text = (
+                    response.choices[0].message.content.strip()
+                    if response and response.choices and response.choices[0].message.content
+                    else ""
+                )
+
+                results = extract_json_array(raw_text)
+                if not isinstance(results, list):
+                    raise ValueError(f"Model returned invalid non-list structure: {raw_text[:120]}")
+
+                validated = validate_results(results, batch)
+                result_map = {r["comment_id"]: r for r in validated}
+
+                async with stats_lock:
+                    for c in batch:
+                        cid = c["comment_id"]
+                        if cid in result_map:
+                            c.update(result_map[cid])
+                            c["classification_status"] = "ok"
+                            s_val = c.get("primary_sentiment", "Neutral")
+                            if s_val == "Positive":
+                                live_stats["pos"] += 1
+                            elif s_val == "Negative":
+                                live_stats["neg"] += 1
+                            elif s_val == "Mixed":
+                                live_stats["mix"] += 1
+                            else:
+                                live_stats["neu"] += 1
+                            if c.get("is_question"):
+                                live_stats["ques"] += 1
+                            if c.get("is_suggestion"):
+                                live_stats["sugg"] += 1
+                        else:
+                            c["classification_status"] = "failed"
+                    live_stats["read"] += len(batch)
+
+                slot.record_success(latency)
+                session_diagnostics.success(
+                    "CLASSIFY",
+                    f"[Key {slot.index}] Batch {batch_idx + 1}/{total_batches} classified in {latency:.0f}ms",
+                    duration_ms=latency,
+                    details={"key_index": slot.index, "batch": batch_idx + 1, "count": len(batch)},
+                )
+
+                if on_batch_complete:
+                    try:
+                        on_batch_complete(batch, dict(live_stats))
+                    except Exception:
+                        pass
+
+                # Modest pacing between requests on the same key
+                inter_delay = 2.0 / max(1, key_pool.size)
+                if inter_delay > 0:
+                    await asyncio.sleep(inter_delay)
+
+                queue.task_done()
+
+            except Exception as exc:
+                err_str = str(exc)
+                err_lower = err_str.lower()
+                is_rate_limit = any(x in err_lower for x in ["429", "rate limit", "rate_limit", "tpm", "rpm"])
+
+                if is_rate_limit and slot is not None:
+                    key_pool.mark_rate_limited(slot.index, cooldown_seconds=60.0)
+                    session_diagnostics.warning(
+                        "KEY-POOL",
+                        f"[Key {slot.index} {slot.masked_key}] Hit rate limit (429). Cooling for 60s. Auto-reassigning batch {batch_idx + 1}...",
+                    )
+                    await queue.put((batch_idx, batch, attempts + 1))
+                    queue.task_done()
+                    await asyncio.sleep(0.5)
+                elif attempts < 3:
+                    slot_label = f"[Key {slot.index}]" if slot else "[Worker]"
+                    session_diagnostics.warning(
+                        "CLASSIFY",
+                        f"{slot_label} Attempt {attempts + 1} on batch {batch_idx + 1} failed: {exc}. Retrying...",
+                    )
+                    if slot:
+                        slot.record_error()
+                    await queue.put((batch_idx, batch, attempts + 1))
+                    queue.task_done()
+                    await asyncio.sleep(1.0)
+                else:
+                    session_diagnostics.error(
+                        "CLASSIFY",
+                        f"Batch {batch_idx + 1} failed after {attempts + 1} attempts across keys: {exc}",
+                    )
+                    if slot:
+                        slot.record_error()
+                    for c in batch:
+                        c["classification_status"] = "failed"
+                    async with stats_lock:
+                        live_stats["read"] += len(batch)
+                    if on_batch_complete:
+                        try:
+                            on_batch_complete(batch, dict(live_stats))
+                        except Exception:
+                            pass
+                    queue.task_done()
+
+    tasks = [asyncio.create_task(worker(i)) for i in range(num_workers)]
+    await queue.join()
+
+    for t in tasks:
+        t.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+    return comments
 
 
 def summarize_comments_groq(
