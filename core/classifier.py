@@ -235,7 +235,7 @@ def classify_batch(
     )
 
     models_to_try = [model_name]
-    for fallback in ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"]:
+    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-3.5-flash-lite"]:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 
@@ -394,7 +394,7 @@ def summarize_comments(
     # Sample comments: up to 80 entries, prefer high-priority and high-likes.
     sample = sorted(
         top_comments,
-        key=lambda c: (c.get("priority") == "high", c.get("likes", 0)),
+        key=lambda c: (str(c.get("priority", "")).lower() == "high", c.get("likes", 0)),
         reverse=True,
     )[:80]
 
@@ -417,7 +417,7 @@ def summarize_comments(
     )
 
     models_to_try = [model_name]
-    for fallback in ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"]:
+    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-3.5-flash-lite"]:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 

@@ -215,7 +215,7 @@ def answer_question(
     )
 
     models_to_try = [model_name]
-    for fallback in ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash"]:
+    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-3.5-flash-lite"]:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 

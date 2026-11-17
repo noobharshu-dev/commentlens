@@ -49,6 +49,8 @@ _PATTERNS = [
     re.compile(r"(?:youtu\.be/)([A-Za-z0-9_-]{11})"),
     # https://www.youtube.com/shorts/VIDEO_ID
     re.compile(r"(?:youtube\.com/shorts/)([A-Za-z0-9_-]{11})"),
+    # https://www.youtube.com/live/VIDEO_ID
+    re.compile(r"(?:youtube\.com/live/)([A-Za-z0-9_-]{11})"),
     # https://www.youtube.com/embed/VIDEO_ID
     re.compile(r"(?:youtube\.com/embed/)([A-Za-z0-9_-]{11})"),
     # https://www.youtube.com/v/VIDEO_ID

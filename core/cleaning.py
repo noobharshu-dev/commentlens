@@ -21,7 +21,7 @@ from typing import Generator
 # Matches strings that contain only emoji/symbol codepoints and whitespace.
 # ---------------------------------------------------------------------------
 _EMOJI_RE = re.compile(
-    r"^[\U0001F000-\U0001FFFF\u2600-\u26FF\u2700-\u27BF\s]+$"
+    r"^[\U0001F000-\U0001FFFF\u2600-\u26FF\u2700-\u27BF\uFE00-\uFE0F\u200D\u20E3\s]+$"
 )
 
 
@@ -62,7 +62,7 @@ def clean_comments(raw_list: list[dict]) -> list[dict]:
     counter = 0
 
     for raw in raw_list:
-        text: str = raw.get("original_text", "")
+        text: str = raw.get("original_text") or ""
         if not text.strip():
             continue  # drop empty
 
@@ -96,11 +96,11 @@ def flag_duplicates(comments: list[dict]) -> list[dict]:
     """
     # Count normalised text occurrences.
     norm_counts: Counter[str] = Counter(
-        _normalize(c.get("original_text", "")) for c in comments
+        _normalize(c.get("original_text") or "") for c in comments
     )
 
     for comment in comments:
-        norm = _normalize(comment.get("original_text", ""))
+        norm = _normalize(comment.get("original_text") or "")
         count = norm_counts[norm]
         if count >= 2:
             comment["is_duplicate"] = True

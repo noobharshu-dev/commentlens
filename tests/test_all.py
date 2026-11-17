@@ -338,3 +338,43 @@ def test_export_csv_utf8_bom():
 def test_export_filename():
     fname = export_filename("dQw4w9WgXcQ", "Negative", date_str="2026-11-16")
     assert fname == "commentlens_dQw4w9WgXcQ_negative_2026-11-16.csv"
+
+
+# ---------------------------------------------------------------------------
+# 7. Additional bug reproduction & edge case tests
+# ---------------------------------------------------------------------------
+
+def test_extract_video_id_live_url():
+    assert extract_video_id("https://www.youtube.com/live/dQw4w9WgXcQ") == "dQw4w9WgXcQ"
+
+
+def test_clean_comments_handles_none_and_heart_emoji():
+    raw = [
+        {"original_text": None},
+        {"original_text": "❤️"},
+        {"original_text": "🔥❤️"},
+        {"original_text": "Hello world!"},
+    ]
+    cleaned = clean_comments(raw)
+    assert len(cleaned) == 3
+    assert cleaned[0]["original_text"] == "❤️"
+    assert cleaned[0]["is_emoji_only"] is True
+    assert cleaned[1]["original_text"] == "🔥❤️"
+    assert cleaned[1]["is_emoji_only"] is True
+    assert cleaned[2]["original_text"] == "Hello world!"
+    assert cleaned[2]["is_emoji_only"] is False
+
+
+def test_priority_sample_sorting_logic():
+    # High priority comment with fewer likes should sort ahead of Low priority with more likes
+    comments = [
+        {"comment_id": 1, "priority": "Low", "likes": 50},
+        {"comment_id": 2, "priority": "High", "likes": 5},
+    ]
+    sorted_sample = sorted(
+        comments,
+        key=lambda c: (str(c.get("priority", "")).lower() == "high", c.get("likes", 0)),
+        reverse=True,
+    )
+    assert sorted_sample[0]["comment_id"] == 2
+

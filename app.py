@@ -478,6 +478,7 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
     title_placeholder = st.empty()
     steps_placeholder = st.empty()
     bar_placeholder = st.empty()
+    status_placeholder = st.empty()
 
     def _render_analyzing_view(active_step: int, step_labels: list[str], progress_val: float, live_stats: dict = None) -> None:
         steps_html = ""

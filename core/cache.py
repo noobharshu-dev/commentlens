@@ -29,7 +29,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -114,7 +114,7 @@ def save_cache(
     payload = {
         "video": video_info,
         "limit": limit,
-        "analyzed_at": datetime.utcnow().isoformat(),
+        "analyzed_at": datetime.now(timezone.utc).isoformat(),
         "comments": comments,
         "summary": summary,
         "themes": themes_dict,
