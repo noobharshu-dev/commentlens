@@ -111,3 +111,101 @@ def test_answer_question_groq_mock():
     )
     assert "audio editing" in answer
     assert 12 in citations
+
+
+def test_answer_question_groq_role_normalization_and_keywords():
+    mock_client = MagicMock()
+    mock_choice = MagicMock()
+    mock_choice.message.content = "Answer citing [c99]."
+    mock_client.chat.completions.create.return_value = MagicMock(choices=[mock_choice])
+
+    history = [
+        {"role": "user", "text": "Hello"},
+        {"role": "model", "text": "Hi there! How can I help?"},
+    ]
+    comments = [
+        {"comment_id": 99, "original_text": "Battery life drains so fast", "likes": 0},
+        {"comment_id": 100, "original_text": "Completely unrelated text", "likes": 500},
+    ]
+
+    answer, citations = answer_question_groq(
+        "What about the battery drain?",
+        history,
+        comments,
+        mock_client,
+        model_name="openai/gpt-oss-120b",
+    )
+
+    assert 99 in citations
+    # Check messages passed to client
+    call_args = mock_client.chat.completions.create.call_args[1]
+    msgs = call_args["messages"]
+
+    # History turns must have role normalized from 'model' to 'assistant'
+    roles = [m["role"] for m in msgs]
+    assert "model" not in roles
+    assert "assistant" in roles
+    assert any(m["role"] == "assistant" and m["content"] == "Hi there! How can I help?" for m in msgs)
+
+    # Keyword-matching comment c99 should be present in user prompt context
+    user_msg = next(m for m in msgs if "Comment data:" in m["content"])
+    assert "[c99]" in user_msg["content"]
+
+
+def test_validate_results_none_likes():
+    from core.classifier import validate_results
+    from core.analysis import aggregate_stats, filter_palette
+
+    raw_results = [
+        {"comment_id": 0, "sentiment": "Positive", "category": "Praise", "priority": "Low"}
+    ]
+    # likes is None, should not raise TypeError
+    batch = [{"comment_id": 0, "original_text": "Good", "likes": None}]
+    validated = validate_results(raw_results, batch)
+    assert len(validated) == 1
+    assert validated[0]["comment_id"] == 0
+    assert validated[0]["priority"] == "Low"
+
+    # Also test aggregate_stats and filter_palette with likes=None
+    stats = aggregate_stats(batch)
+    assert stats["top_liked_count"] == 0
+    top_liked = filter_palette(batch, "Top liked")
+    assert len(top_liked) == 1
+
+
+def test_classify_batch_groq_rate_limit_fail_fast():
+    mock_client = MagicMock()
+    # Mock chat.completions.create raising 429 Rate Limit for all models
+    mock_client.chat.completions.create.side_effect = Exception("HTTP 429: Rate limit reached for TPM on model")
+
+    batch = [{"comment_id": 0, "original_text": "Test"}]
+    with pytest.raises(ValueError) as exc_info:
+        classify_batch_groq(batch, mock_client, model_name="openai/gpt-oss-120b", delay=0)
+
+    assert "Groq Rate Limit Exceeded" in str(exc_info.value)
+    assert "429" in str(exc_info.value)
+
+
+def test_classify_batch_groq_active_model_persistence():
+    import core.classifier as clf
+
+    mock_client = MagicMock()
+    # Model 1 fails with 429, Model 2 succeeds
+    mock_choice = MagicMock()
+    mock_choice.message.content = '[{"comment_id": 0, "sentiment": "Positive"}]'
+
+    def side_effect(*args, **kwargs):
+        if kwargs.get("model") == "openai/gpt-oss-120b":
+            raise Exception("HTTP 429: TPM exceeded")
+        return MagicMock(choices=[mock_choice])
+
+    mock_client.chat.completions.create.side_effect = side_effect
+
+    clf._ACTIVE_GROQ_MODEL = None
+    batch = [{"comment_id": 0, "original_text": "Test"}]
+    res = clf.classify_batch_groq(batch, mock_client, model_name="openai/gpt-oss-120b", delay=0)
+
+    assert res is not None
+    # _ACTIVE_GROQ_MODEL should now be the fallback model that succeeded (openai/gpt-oss-20b)
+    assert clf._ACTIVE_GROQ_MODEL == "openai/gpt-oss-20b"
+

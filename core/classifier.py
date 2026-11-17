@@ -42,6 +42,13 @@ SUPPORTED_GROQ_MODELS = [
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
 ]
+_ACTIVE_GROQ_MODEL: Optional[str] = None
+
+
+def reset_active_groq_model() -> None:
+    """Reset sticky Groq model memory so fresh runs start with the user's chosen default."""
+    global _ACTIVE_GROQ_MODEL
+    _ACTIVE_GROQ_MODEL = None
 GROQ_API_KEY: str = os.environ.get("GROQ_API_KEY", "")
 GROQ_MODEL: str = os.environ.get("GROQ_MODEL", DEFAULT_GROQ_MODEL)
 GROQ_DELAY_SECONDS: float = float(os.environ.get("GROQ_DELAY_SECONDS", 3))
@@ -319,14 +326,22 @@ def classify_batch_groq(
         + "\n\nCRITICAL INSTRUCTION: Return a JSON object with a single key 'comments' containing the array of objects matching the schema. Example: {\"comments\": [...]}. Do not include markdown or extra commentary."
     )
 
-    models_to_try = [model_name] if model_name else []
+    global _ACTIVE_GROQ_MODEL
+    models_to_try: list[str] = []
+    if _ACTIVE_GROQ_MODEL and _ACTIVE_GROQ_MODEL in SUPPORTED_GROQ_MODELS:
+        models_to_try.append(_ACTIVE_GROQ_MODEL)
+    if model_name and model_name not in models_to_try:
+        models_to_try.append(model_name)
     for m in SUPPORTED_GROQ_MODELS:
         if m not in models_to_try:
             models_to_try.append(m)
 
     backoff_seconds = [3, 6, 12]
+    rate_limit_hits = 0
+    total_models_tried = 0
 
     for model_candidate in models_to_try:
+        total_models_tried += 1
         for attempt, wait in enumerate(backoff_seconds, start=1):
             t0 = time.time()
             try:
@@ -356,6 +371,7 @@ def classify_batch_groq(
                         f"Batch of {len(results)} comments classified using Groq {model_candidate} in {latency:.0f}ms",
                         duration_ms=latency,
                     )
+                    _ACTIVE_GROQ_MODEL = model_candidate
                     if delay > 0:
                         time.sleep(delay)
                     return results
@@ -376,6 +392,8 @@ def classify_batch_groq(
                 # If 429 Rate Limit (e.g. 8K TPM hit) or model 404/not found:
                 # Switch to next fallback model immediately to use its separate quota bucket
                 if any(x in err_lower for x in ["429", "rate limit", "rate_limit", "tpm", "rpm", "404", "not_found", "not found"]):
+                    if any(x in err_lower for x in ["429", "rate limit", "rate_limit", "tpm", "rpm"]):
+                        rate_limit_hits += 1
                     session_diagnostics.warning(
                         "CLASSIFY",
                         f"Groq model {model_candidate} rate limit or availability issue ({exc}); switching to fallback model bucket...",
@@ -387,6 +405,16 @@ def classify_batch_groq(
 
             if attempt < len(backoff_seconds):
                 time.sleep(wait)
+
+    if total_models_tried > 0 and rate_limit_hits >= total_models_tried:
+        session_diagnostics.error(
+            "CLASSIFY",
+            f"Groq Rate Limit Exceeded (HTTP 429) across all {rate_limit_hits} fallback models. Stopping analysis.",
+        )
+        raise ValueError(
+            "Groq Rate Limit Exceeded (HTTP 429). The free-tier TPM (8K) or RPM (30) limit was reached across all fallback models. "
+            "Please wait 1 minute before trying again or reduce batch size."
+        )
 
     session_diagnostics.error("CLASSIFY", f"Batch of {len(batch)} comments failed across all attempted Groq models.")
     return None
@@ -553,7 +581,7 @@ def validate_results(results: list[dict], batch: list[dict]) -> list[dict]:
             res["priority"] = raw_pri if raw_pri in _PRIORITY_ENUM else "Low"
 
             # FR-13: Priority High = bug reports, serious criticism, or questions from comments with 10 or more likes
-            likes = int(comment.get("likes", 0))
+            likes = int(comment.get("likes") or 0)
             if res["is_bug_report"] or (res["is_criticism"] and likes >= 10) or (res["is_question"] and likes >= 10):
                 res["priority"] = "High"
 
@@ -593,7 +621,7 @@ def summarize_comments_groq(
 
     sample = sorted(
         top_comments,
-        key=lambda c: (str(c.get("priority", "")).lower() == "high", c.get("likes", 0)),
+        key=lambda c: (str(c.get("priority", "")).lower() == "high", int(c.get("likes") or 0)),
         reverse=True,
     )[:80]
 
@@ -664,7 +692,7 @@ def summarize_comments(
     # Sample comments: up to 80 entries, prefer high-priority and high-likes.
     sample = sorted(
         top_comments,
-        key=lambda c: (str(c.get("priority", "")).lower() == "high", c.get("likes", 0)),
+        key=lambda c: (str(c.get("priority", "")).lower() == "high", int(c.get("likes") or 0)),
         reverse=True,
     )[:80]
 

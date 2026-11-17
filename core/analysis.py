@@ -71,7 +71,7 @@ def aggregate_stats(comments: list[dict]) -> dict:
     spam_count = sum(1 for c in comments if c.get("is_spam_or_bot"))
     toxic_count = sum(1 for c in comments if c.get("is_rude_or_toxic"))
     top_liked_count = sum(
-        1 for c in comments if c.get("likes", 0) >= _TOP_LIKED_THRESHOLD
+        1 for c in comments if int(c.get("likes") or 0) >= _TOP_LIKED_THRESHOLD
     )
     unclassified_count = sum(
         1 for c in comments
@@ -273,7 +273,7 @@ def filter_palette(
     if p == "Top liked":
         # FR-24: "Top liked | All, sorted by likes descending"
         safe_comments = [c for c in comments if _is_safe(c)]
-        return sorted(safe_comments, key=lambda c: c.get("likes", 0), reverse=True)
+        return sorted(safe_comments, key=lambda c: int(c.get("likes") or 0), reverse=True)
 
     if p == "Unclassified":
         return [

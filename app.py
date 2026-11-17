@@ -60,6 +60,7 @@ from core.classifier import (
     validate_results,
     summarize_comments,
     sanitize_model_name,
+    reset_active_groq_model,
     SUPPORTED_GEMINI_MODELS,
     DEFAULT_GROQ_MODEL,
     SUPPORTED_GROQ_MODELS,
@@ -251,10 +252,20 @@ def _llm_client(provider: str | None = None):
     return _groq_client()
 
 
-def _estimate_requests(limit: int) -> int:
-    """Estimate Gemini requests for a given comment limit (batch size 40)."""
-    batches = (limit + 39) // 40
-    return batches + 1  # +1 for summary
+def _estimate_requests(limit: int, provider: str = "groq") -> tuple[int, int]:
+    """Estimate API requests and duration in minutes for a given limit and provider."""
+    prov = (provider or "groq").lower()
+    if "gemini" in prov:
+        batch_size = 40
+        delay = GEMINI_DELAY
+    else:
+        batch_size = 20
+        delay = GROQ_DELAY
+    batches = (limit + batch_size - 1) // batch_size
+    requests = batches + 1  # +1 for summary
+    est_seconds = int(batches * delay + 4)
+    est_mins = max(1, (est_seconds + 30) // 60)
+    return requests, est_mins
 
 
 def _build_df(comments: list) -> pd.DataFrame:
@@ -307,6 +318,8 @@ def _render_sidebar() -> int:
                 help="Default: openai/gpt-oss-120b (Fallbacks: openai/gpt-oss-20b, qwen/qwen3.8-27b)",
                 key="sb_groq_model_selector",
             )
+            if selected_model != GROQ_MODEL:
+                reset_active_groq_model()
             GROQ_MODEL = selected_model
             os.environ["GROQ_MODEL"] = selected_model
         else:
@@ -446,7 +459,7 @@ def _render_sidebar() -> int:
 
         st.markdown("---")
         st.markdown(
-            '<p style="font-size:12px;color:var(--muted);">Built with Gemini and the YouTube Data API.</p>',
+            '<p style="font-size:12px;color:var(--muted);">Built with Groq, Gemini and the YouTube Data API.</p>',
             unsafe_allow_html=True,
         )
     return limit
@@ -496,8 +509,8 @@ def _render_empty_state(sidebar_limit: int) -> None:
             key="main_limit",
         )
     with col_info:
-        est = _estimate_requests(limit_val)
-        est_mins = max(1, est * 4 // 60)
+        active_prov = st.session_state.get("llm_provider", LLM_PROVIDER)
+        est, est_mins = _estimate_requests(limit_val, active_prov)
         st.markdown(
             f'<div style="padding-top:24px;font-size:13px;color:var(--muted);">'
             f'About {est} requests, roughly {est_mins} minute{"s" if est_mins != 1 else ""}.'
@@ -522,7 +535,19 @@ def _render_empty_state(sidebar_limit: int) -> None:
 
     with st.expander("API connection test & live diagnostics", expanded=False):
         st.markdown('<div class="note" style="margin-bottom:8px;">Verify your API credentials and rate limits before launching an analysis:</div>', unsafe_allow_html=True)
-        col_test_yt, col_test_gem = st.columns(2)
+        col_test_groq, col_test_yt, col_test_gem = st.columns(3)
+        with col_test_groq:
+            if st.button("Test Groq API Key", key="lp_test_groq", use_container_width=True):
+                try:
+                    grq_client = _groq_client()
+                    with st.spinner("Testing Groq API..."):
+                        res = test_groq_connection(grq_client, GROQ_MODEL)
+                        if res["status"] == "ok":
+                            st.success(res["message"])
+                        else:
+                            st.error(res["message"])
+                except Exception as exc:
+                    st.error(f"Groq key error: {exc}")
         with col_test_yt:
             if st.button("Test YouTube API Key", key="lp_test_yt", use_container_width=True):
                 with st.spinner("Testing YouTube API..."):
@@ -669,6 +694,7 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
     logs_placeholder = st.empty()
 
     session_diagnostics.clear()
+    reset_active_groq_model()
     session_diagnostics.info("PIPELINE", f"Starting analysis pipeline for video ID: {video_id} (requested limit: {limit})")
 
     def _render_analyzing_view(active_step: int, step_labels: list[str], progress_val: float, live_stats: dict = None) -> None:
@@ -782,9 +808,10 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
     try:
         video_info = get_video_info(video_id)
         vid_title = video_info.get("title", "YouTube Video")
+        safe_vid_title = html.escape(str(vid_title))
         title_placeholder.markdown(
             f'<div class="note" style="color:var(--muted);font-size:14px;margin-bottom:6px;">Analyzing</div>'
-            f'<h1 style="font-size:38px;line-height:1.15;font-weight:650;letter-spacing:-.02em;margin-bottom:28px;">{vid_title}</h1>',
+            f'<h1 style="font-size:38px;line-height:1.15;font-weight:650;letter-spacing:-.02em;margin-bottom:28px;">{safe_vid_title}</h1>',
             unsafe_allow_html=True,
         )
     except Exception as exc:
@@ -910,7 +937,7 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
 
     top_comments = sorted(
         [c for c in comments if c.get("classification_status") == "ok"],
-        key=lambda c: c.get("likes", 0),
+        key=lambda c: int(c.get("likes") or 0),
         reverse=True,
     )[:150]
 
@@ -1009,7 +1036,7 @@ def _render_header() -> None:
             _all_comments = st.session_state.comments or []
             _top_sugg = sorted(
                 [c for c in _all_comments if c.get("is_suggestion")],
-                key=lambda c: c.get("likes", 0),
+                key=lambda c: int(c.get("likes") or 0),
                 reverse=True,
             )[:10]
             _bug_reps = [c for c in _all_comments if c.get("is_bug_report")]
@@ -1256,12 +1283,13 @@ def _render_theme_bars() -> None:
     st.markdown('<div class="cl-section-heading" style="margin-bottom:12px;">Top themes (suggestions & criticism)</div>', unsafe_allow_html=True)
     for theme_name, count in themes:
         pct = count / max_count * 100
+        safe_theme_name = html.escape(str(theme_name))
         col_bar, col_btn = st.columns([5, 1])
         with col_bar:
             st.markdown(
                 f"""
                 <div style="display:grid;grid-template-columns:130px 1fr 36px;gap:14px;align-items:center;margin:10px 0;">
-                  <span style="font-weight:500;font-size:14px;color:var(--ink);">{theme_name}</span>
+                  <span style="font-weight:500;font-size:14px;color:var(--ink);">{safe_theme_name}</span>
                   <div class="theme-bar-track" style="height:8px;background:var(--line);border-radius:var(--radius-sm);overflow:hidden;">
                     <i class="theme-bar-fill" style="display:block;height:8px;width:{pct:.0f}%;background:var(--accent);border-radius:var(--radius-sm);"></i>
                   </div>
@@ -1295,8 +1323,9 @@ def _render_two_column_section() -> None:
     with col_left:
         st.markdown('<div class="cl-section-heading" style="margin-bottom:12px;">What viewers are saying</div>', unsafe_allow_html=True)
         summary = st.session_state.summary or "Summary not available."
+        safe_summary = html.escape(str(summary))
         st.markdown(
-            f'<p style="font-size:16px;line-height:1.7;color:var(--ink);margin-top:4px;">{summary}</p>',
+            f'<p style="font-size:16px;line-height:1.7;color:var(--ink);margin-top:4px;">{safe_summary}</p>',
             unsafe_allow_html=True,
         )
         _render_language_bar()
@@ -1507,7 +1536,7 @@ def _render_explore_tab() -> None:
         filtered = search_rows(filtered, search_query)
 
     # Sort filtered comments
-    sorted_filtered = sorted(filtered, key=lambda c: c.get("likes", 0), reverse=True)
+    sorted_filtered = sorted(filtered, key=lambda c: int(c.get("likes") or 0), reverse=True)
     df = _build_df(sorted_filtered)
 
     col_config = {
@@ -1615,6 +1644,13 @@ def _render_row_detail(c: dict) -> None:
     suggested_reply = c.get("suggested_reply", "")
     orig_text = c.get("original_text", "")
 
+    safe_author = html.escape(str(author))
+    safe_orig_text = html.escape(str(orig_text))
+    safe_theme = html.escape(str(theme)) if theme else ""
+    safe_lang = html.escape(str(language)) if language else ""
+    safe_ai_summary = html.escape(str(ai_summary)) if ai_summary else "No summary available."
+    safe_suggested_reply = html.escape(str(suggested_reply)) if suggested_reply else "No reply suggested for this comment."
+
     # Calculate sentiment marker position (-1.0 to +1.0 mapped to 0% to 100%)
     score_pct = max(0, min(100, (score + 1.0) / 2.0 * 100))
 
@@ -1633,9 +1669,9 @@ def _render_row_detail(c: dict) -> None:
     elif priority and priority.lower() == "medium":
         chips_html += '<span class="chip">Medium priority</span>'
     if theme:
-        chips_html += f'<span class="chip">{theme}</span>'
+        chips_html += f'<span class="chip">{safe_theme}</span>'
     if language:
-        chips_html += f'<span class="chip">{language}</span>'
+        chips_html += f'<span class="chip">{safe_lang}</span>'
     if c.get("is_duplicate"):
         chips_html += f'<span class="chip">Duplicate ({c.get("duplicate_count", 1)} copies)</span>'
 
@@ -1652,10 +1688,10 @@ def _render_row_detail(c: dict) -> None:
         f"""
         <div class="cl-detail-card" style="margin-top:12px;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:14px;">
-            <b style="color:var(--ink);">{author}</b>
+            <b style="color:var(--ink);">{safe_author}</b>
             <span class="note tab" style="color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;">{date_str} &nbsp;&middot;&nbsp; {likes:,} likes &nbsp;&middot;&nbsp; {replies:,} replies</span>
           </div>
-          <p style="margin-top:14px;font-size:16px;line-height:1.6;letter-spacing:-.005em;color:var(--ink);">{orig_text}</p>
+          <p style="margin-top:14px;font-size:16px;line-height:1.6;letter-spacing:-.005em;color:var(--ink);">{safe_orig_text}</p>
           <div style="margin-top:16px;display:flex;gap:6px;flex-wrap:wrap;">
             {chips_html}
           </div>
@@ -1672,13 +1708,13 @@ def _render_row_detail(c: dict) -> None:
 
           <div style="margin-top:20px;">
             <div class="note" style="color:var(--muted);font-size:13px;">In short</div>
-            <p style="margin-top:4px;font-size:14px;color:var(--ink);line-height:1.6;">{ai_summary if ai_summary else 'No summary available.'}</p>
+            <p style="margin-top:4px;font-size:14px;color:var(--ink);line-height:1.6;">{safe_ai_summary}</p>
           </div>
 
           <div style="margin-top:20px;">
             <div class="note" style="color:var(--muted);font-size:13px;">Suggested reply</div>
             <div style="margin-top:8px;padding:14px 16px;border-radius:var(--radius-sm);background:var(--surface-subtle);border:1px solid var(--line);border-left:3px solid var(--accent);line-height:1.6;font-size:14px;color:var(--ink);">
-              {suggested_reply if suggested_reply else 'No reply suggested for this comment.'}
+              {safe_suggested_reply}
             </div>
           </div>
         </div>
@@ -1711,18 +1747,20 @@ def _render_ask_tab() -> None:
     # If we have answered questions, show the latest one prominently (per 05-ask-the-comments.png)
     if st.session_state.qa_history:
         latest = st.session_state.qa_history[-1]
+        safe_q = html.escape(str(latest["question"]))
         st.markdown('<div class="note" style="color:var(--muted);font-size:13px;margin-bottom:4px;">You asked</div>', unsafe_allow_html=True)
         st.markdown(
-            f'<h1 style="font-size:32px;line-height:1.2;font-weight:650;letter-spacing:-.015em;margin:4px 0 24px;color:var(--ink);">{latest["question"]}</h1>',
+            f'<h1 style="font-size:32px;line-height:1.2;font-weight:650;letter-spacing:-.015em;margin:4px 0 24px;color:var(--ink);">{safe_q}</h1>',
             unsafe_allow_html=True,
         )
 
         # Style cited comment numbers like [c12] into inline pills
         ans_text = latest["answer"]
+        escaped_ans = html.escape(str(ans_text))
         formatted_ans = re.sub(
             r'\[c(\d+)\]',
             r'<span style="display:inline-block;background:var(--accent-soft);color:var(--accent-ink);font-weight:600;font-size:12px;padding:1px 7px;border-radius:var(--radius-sm);margin:0 2px;font-variant-numeric:tabular-nums;border:1px solid rgba(15,118,110,0.15);">c\1</span>',
-            ans_text,
+            escaped_ans,
         )
         st.markdown(
             f'<div style="font-size:16px;line-height:1.75;color:var(--ink);max-width:840px;">{formatted_ans}</div>',
@@ -1818,7 +1856,7 @@ def _fallback_qa_answer(question: str, comments: list[dict]) -> tuple[str, list[
 
     if "want next" in q_lower or "suggestion" in q_lower:
         suggs = [c for c in comments if c.get("is_suggestion") and not c.get("is_rude_or_toxic")][:5]
-        suggs.sort(key=lambda c: c.get("likes", 0), reverse=True)
+        suggs.sort(key=lambda c: int(c.get("likes") or 0), reverse=True)
         cited_ids = [c["comment_id"] for c in suggs[:3]]
         cite_str = " ".join(f"[c{cid}]" for cid in cited_ids)
         answer = (
@@ -1827,7 +1865,7 @@ def _fallback_qa_answer(question: str, comments: list[dict]) -> tuple[str, list[
         )
     elif "dislike" in q_lower or "critic" in q_lower:
         crits = [c for c in comments if c.get("is_criticism") and not c.get("is_rude_or_toxic")][:5]
-        crits.sort(key=lambda c: c.get("likes", 0), reverse=True)
+        crits.sort(key=lambda c: int(c.get("likes") or 0), reverse=True)
         cited_ids = [c["comment_id"] for c in crits[:3]]
         cite_str = " ".join(f"[c{cid}]" for cid in cited_ids)
         answer = (
@@ -1836,14 +1874,14 @@ def _fallback_qa_answer(question: str, comments: list[dict]) -> tuple[str, list[
         )
     elif "bug" in q_lower:
         bugs = [c for c in comments if c.get("is_bug_report")][:5]
-        bugs.sort(key=lambda c: c.get("likes", 0), reverse=True)
+        bugs.sort(key=lambda c: int(c.get("likes") or 0), reverse=True)
         cited_ids = [c["comment_id"] for c in bugs[:3]]
         cite_str = " ".join(f"[c{cid}]" for cid in cited_ids)
         answer = (
             f"Viewers reported camera control slider freezes when switching modes, overnight battery indexing drains, and random Bluetooth headphone disconnects {cite_str}."
         )
     else:
-        top_likes = sorted(comments, key=lambda c: c.get("likes", 0), reverse=True)[:3]
+        top_likes = sorted(comments, key=lambda c: int(c.get("likes") or 0), reverse=True)[:3]
         cited_ids = [c["comment_id"] for c in top_likes]
         cite_str = " ".join(f"[c{cid}]" for cid in cited_ids)
         answer = f"Based on the most popular viewer feedback {cite_str}, the audience was largely focused on camera quality, battery performance, and pricing."
@@ -1877,17 +1915,21 @@ def _render_quotes_tab() -> None:
         text = q.get("quote", q.get("original_text", ""))
         words = text.split()
         display_text = " ".join(words[:25]) + ("..." if len(words) > 25 else "")
-        likes = q.get("likes", 0)
+        likes = int(q.get("likes") or 0)
         theme = q.get("theme", "")
+
+        safe_author = html.escape(str(author))
+        safe_display_text = html.escape(str(display_text))
+        safe_theme = html.escape(str(theme)) if theme else ""
 
         st.markdown(
             f"""
             <div class="quote-card">
-              <div class="quote-text">&ldquo;{display_text}&rdquo;</div>
+              <div class="quote-text">&ldquo;{safe_display_text}&rdquo;</div>
               <div class="quote-meta">
-                <span class="quote-author">{author}</span>
+                <span class="quote-author">{safe_author}</span>
                 <span class="quote-likes">{likes:,} likes</span>
-                {f'<span class="quote-theme">{theme}</span>' if theme else ""}
+                {f'<span class="quote-theme">{safe_theme}</span>' if safe_theme else ""}
               </div>
             </div>
             """,
@@ -1906,7 +1948,7 @@ def _render_report_tab() -> None:
 
     _top_sugg = sorted(
         [c for c in comments if c.get("is_suggestion")],
-        key=lambda c: c.get("likes", 0),
+        key=lambda c: int(c.get("likes") or 0),
         reverse=True,
     )[:10]
     _bug_reps = [c for c in comments if c.get("is_bug_report")]
