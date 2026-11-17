@@ -60,11 +60,22 @@ from core.classifier import (
     validate_results,
     summarize_comments,
     sanitize_model_name,
-    reset_active_groq_model,
     SUPPORTED_GEMINI_MODELS,
     DEFAULT_GROQ_MODEL,
     SUPPORTED_GROQ_MODELS,
 )
+
+try:
+    from core.classifier import reset_active_groq_model
+except ImportError:
+    try:
+        import importlib
+        import core.classifier
+        importlib.reload(core.classifier)
+        from core.classifier import reset_active_groq_model
+    except Exception:
+        def reset_active_groq_model() -> None:
+            pass
 from core.analysis import (
     aggregate_stats,
     sentiment_timeline,
