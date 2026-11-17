@@ -24,7 +24,16 @@ load_dotenv()
 # Sync Streamlit secrets to os.environ if running on Streamlit Cloud
 try:
     if hasattr(st, "secrets"):
-        for _k in ["GEMINI_API_KEY", "YOUTUBE_API_KEY", "GEMINI_MODEL", "GEMINI_DELAY_SECONDS"]:
+        for _k in [
+            "GROQ_API_KEY",
+            "GROQ_MODEL",
+            "GROQ_DELAY_SECONDS",
+            "LLM_PROVIDER",
+            "GEMINI_API_KEY",
+            "YOUTUBE_API_KEY",
+            "GEMINI_MODEL",
+            "GEMINI_DELAY_SECONDS",
+        ]:
             if _k in st.secrets and not os.environ.get(_k):
                 os.environ[_k] = str(st.secrets[_k]).strip()
 except Exception:
@@ -51,6 +60,8 @@ from core.classifier import (
     summarize_comments,
     sanitize_model_name,
     SUPPORTED_GEMINI_MODELS,
+    DEFAULT_GROQ_MODEL,
+    SUPPORTED_GROQ_MODELS,
 )
 from core.analysis import (
     aggregate_stats,
@@ -63,9 +74,18 @@ from core.analysis import (
 from core.creator import pick_top_quotes, answer_question, build_creator_report
 from core.export import export_csv, export_filename
 from core.cache import load_cache, save_cache, clear_cache
-from core.diagnostics import session_diagnostics, test_gemini_connection, test_youtube_connection
+from core.diagnostics import (
+    session_diagnostics,
+    test_gemini_connection,
+    test_groq_connection,
+    test_youtube_connection,
+)
 
 import google.genai as genai
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
 
 logger = logging.getLogger(__name__)
 
@@ -112,12 +132,19 @@ for _key, _val in _DEFAULTS.items():
         st.session_state[_key] = _val
 
 # ---------------------------------------------------------------------------
-# Constants
+# Constants & Model Configuration
 # ---------------------------------------------------------------------------
-_raw_model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
-GEMINI_MODEL = sanitize_model_name(_raw_model)
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
+GROQ_DELAY = int(os.getenv("GROQ_DELAY_SECONDS", "3"))
+
+_raw_gemini = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+GEMINI_MODEL = sanitize_model_name(_raw_gemini)
 os.environ["GEMINI_MODEL"] = GEMINI_MODEL
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 GEMINI_DELAY = int(os.getenv("GEMINI_DELAY_SECONDS", "4"))
 
@@ -202,6 +229,26 @@ def _gemini_client():
     return genai.Client(api_key=api_key)
 
 
+def _groq_client():
+    """Return a configured Groq client."""
+    api_key = os.getenv("GROQ_API_KEY", GROQ_API_KEY)
+    if not api_key or api_key.strip().startswith("your_"):
+        raise ValueError(
+            "Groq API key is not configured. Please enter a valid Groq API key in the sidebar Settings under 'API keys & credentials'."
+        )
+    if Groq is None:
+        raise ImportError("The 'groq' package is not installed. Please run: pip install groq")
+    return Groq(api_key=api_key)
+
+
+def _llm_client(provider: str | None = None):
+    """Return the configured LLM client based on selected provider."""
+    p = (provider or LLM_PROVIDER or "groq").lower()
+    if "gemini" in p:
+        return _gemini_client()
+    return _groq_client()
+
+
 def _estimate_requests(limit: int) -> int:
     """Estimate Gemini requests for a given comment limit (batch size 40)."""
     batches = (limit + 39) // 40
@@ -234,18 +281,44 @@ def _render_sidebar() -> int:
         st.markdown("---")
 
         st.markdown("**Settings**")
-        global GEMINI_MODEL
-        model_options = SUPPORTED_GEMINI_MODELS
-        curr_idx = model_options.index(GEMINI_MODEL) if GEMINI_MODEL in model_options else 0
-        selected_model = st.selectbox(
-            "Gemini Model",
-            options=model_options,
-            index=curr_idx,
-            help="Default: gemini-3.5-flash-lite (active on Google GenAI API)",
-            key="sb_model_selector",
+        global LLM_PROVIDER, GROQ_MODEL, GEMINI_MODEL
+        provider_options = ["Groq (Recommended)", "Gemini"]
+        p_idx = 0 if LLM_PROVIDER != "gemini" else 1
+        selected_provider = st.selectbox(
+            "LLM Provider",
+            options=provider_options,
+            index=p_idx,
+            help="Select the AI provider. Groq provides ultra-fast inference with dedicated free-tier buckets.",
+            key="sb_provider_selector",
         )
-        GEMINI_MODEL = selected_model
-        os.environ["GEMINI_MODEL"] = selected_model
+        LLM_PROVIDER = "gemini" if "Gemini" in selected_provider else "groq"
+        os.environ["LLM_PROVIDER"] = LLM_PROVIDER
+
+        if LLM_PROVIDER == "groq":
+            groq_opts = SUPPORTED_GROQ_MODELS
+            g_idx = groq_opts.index(GROQ_MODEL) if GROQ_MODEL in groq_opts else 0
+            selected_model = st.selectbox(
+                "Groq Model",
+                options=groq_opts,
+                index=g_idx,
+                help="Default: openai/gpt-oss-120b (Fallbacks: openai/gpt-oss-20b, qwen/qwen3.8-27b)",
+                key="sb_groq_model_selector",
+            )
+            GROQ_MODEL = selected_model
+            os.environ["GROQ_MODEL"] = selected_model
+        else:
+            model_options = SUPPORTED_GEMINI_MODELS
+            curr_idx = model_options.index(GEMINI_MODEL) if GEMINI_MODEL in model_options else 0
+            selected_model = st.selectbox(
+                "Gemini Model",
+                options=model_options,
+                index=curr_idx,
+                help="Default: gemini-3.5-flash-lite",
+                key="sb_model_selector",
+            )
+            GEMINI_MODEL = selected_model
+            os.environ["GEMINI_MODEL"] = selected_model
+
         limit = st.slider(
             "Default comments",
             min_value=100,
@@ -257,12 +330,16 @@ def _render_sidebar() -> int:
 
         # API Keys configuration
         with st.expander("API keys & credentials", expanded=False):
+            cur_groq = os.getenv("GROQ_API_KEY", "")
             cur_yt = os.getenv("YOUTUBE_API_KEY", "")
             cur_gemini = os.getenv("GEMINI_API_KEY", "")
+            groq_configured = bool(cur_groq and not cur_groq.startswith("your_"))
             yt_configured = bool(cur_yt and not cur_yt.startswith("your_"))
             gemini_configured = bool(cur_gemini and not cur_gemini.startswith("your_"))
 
             st.markdown(
+                f'<span style="font-size:12px;color:{"#2E7D5B" if groq_configured else "#9A6B12"};">'
+                f'Groq API: {"Configured" if groq_configured else "Not set"}</span><br>'
                 f'<span style="font-size:12px;color:{"#2E7D5B" if yt_configured else "#9A6B12"};">'
                 f'YouTube API: {"Configured" if yt_configured else "Not set"}</span><br>'
                 f'<span style="font-size:12px;color:{"#2E7D5B" if gemini_configured else "#9A6B12"};">'
@@ -270,6 +347,13 @@ def _render_sidebar() -> int:
                 unsafe_allow_html=True,
             )
 
+            new_groq_key = st.text_input(
+                "Groq API key",
+                value="" if not groq_configured else "••••••••••••••••",
+                type="password",
+                help="Groq Cloud API key (free tier available at console.groq.com)",
+                key="sb_groq_key",
+            )
             new_yt_key = st.text_input(
                 "YouTube API key",
                 value="" if not yt_configured else "••••••••••••••••",
@@ -287,6 +371,13 @@ def _render_sidebar() -> int:
 
             if st.button("Save API keys", key="save_keys_btn"):
                 updated = False
+                if new_groq_key and not new_groq_key.startswith("•"):
+                    os.environ["GROQ_API_KEY"] = new_groq_key.strip()
+                    try:
+                        set_key(str(_ENV_PATH), "GROQ_API_KEY", new_groq_key.strip())
+                    except Exception:
+                        pass
+                    updated = True
                 if new_yt_key and not new_yt_key.startswith("•"):
                     os.environ["YOUTUBE_API_KEY"] = new_yt_key.strip()
                     try:
@@ -314,15 +405,26 @@ def _render_sidebar() -> int:
                     else:
                         st.error(yt_res["message"])
 
-                    try:
-                        g_client = _gemini_client()
-                        gem_res = test_gemini_connection(g_client, GEMINI_MODEL)
-                        if gem_res["status"] == "ok":
-                            st.success(gem_res["message"])
-                        else:
-                            st.error(gem_res["message"])
-                    except Exception as exc:
-                        st.error(f"Gemini client setup error: {exc}")
+                    if LLM_PROVIDER == "groq":
+                        try:
+                            g_client = _groq_client()
+                            groq_res = test_groq_connection(g_client, GROQ_MODEL)
+                            if groq_res["status"] == "ok":
+                                st.success(groq_res["message"])
+                            else:
+                                st.error(groq_res["message"])
+                        except Exception as exc:
+                            st.error(f"Groq setup error: {exc}")
+                    else:
+                        try:
+                            g_client = _gemini_client()
+                            gem_res = test_gemini_connection(g_client, GEMINI_MODEL)
+                            if gem_res["status"] == "ok":
+                                st.success(gem_res["message"])
+                            else:
+                                st.error(gem_res["message"])
+                        except Exception as exc:
+                            st.error(f"Gemini client setup error: {exc}")
 
         st.markdown("---")
 
@@ -646,10 +748,15 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
                 unsafe_allow_html=True,
             )
 
+    provider_label = "Groq" if LLM_PROVIDER == "groq" else "Gemini"
+    active_model = GROQ_MODEL if LLM_PROVIDER == "groq" else GEMINI_MODEL
+    active_delay = GROQ_DELAY if LLM_PROVIDER == "groq" else GEMINI_DELAY
+    batch_size = 20 if LLM_PROVIDER == "groq" else 40
+
     step_labels = [
         "Fetching comments",
         "Cleaning and marking duplicates",
-        "Reading comments with Gemini",
+        f"Reading comments with {provider_label}",
         "Writing the summary",
     ]
 
@@ -706,9 +813,9 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
     _render_analyzing_view(3, step_labels, 0.35)
 
     # 4d — classify
-    total_batches = (len(comments) + 39) // 40
+    total_batches = (len(comments) + batch_size - 1) // batch_size
     try:
-        client = _gemini_client()
+        client = _llm_client(LLM_PROVIDER)
     except Exception as exc:
         st.error(str(exc))
         return
@@ -716,7 +823,7 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
     failed_count = 0
     pos_live, neu_live, mix_live, neg_live, ques_live, sugg_live = 0, 0, 0, 0, 0, 0
 
-    for batch_idx, batch in enumerate(make_batches(comments, size=40)):
+    for batch_idx, batch in enumerate(make_batches(comments, size=batch_size)):
         pct = 0.35 + 0.50 * ((batch_idx + 1) / max(total_batches, 1))
         step_labels[2] = f"Reading batch {batch_idx + 1} of {total_batches}"
         
@@ -727,13 +834,13 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
             "neg": neg_live,
             "ques": ques_live,
             "sugg": sugg_live,
-            "read": (batch_idx) * 40,
+            "read": (batch_idx) * batch_size,
             "total": len(comments),
         }
         _render_analyzing_view(3, step_labels, pct, live_stats)
 
         try:
-            results = classify_batch(batch, client, GEMINI_MODEL, GEMINI_DELAY)
+            results = classify_batch(batch, client, active_model, active_delay)
             if results is None:
                 for c in batch:
                     c["classification_status"] = "failed"
@@ -760,7 +867,7 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
             err_msg = str(exc)
             session_diagnostics.error("CLASSIFY", f"Fatal error in batch {batch_idx + 1}: {err_msg}")
             st.session_state["last_analysis_error"] = err_msg
-            for c in comments[batch_idx * 40:]:
+            for c in comments[batch_idx * batch_size:]:
                 c["classification_status"] = "failed"
             failed_count = len(comments) - (pos_live + neg_live + mix_live + neu_live)
             break
@@ -800,7 +907,7 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
     tc_dict = dict(tc)
 
     try:
-        summary = summarize_comments(top_comments, tc, client, GEMINI_MODEL)
+        summary = summarize_comments(top_comments, tc, client, active_model)
     except Exception as exc:
         summary = "Summary could not be generated."
         logger.warning("Summary generation failed: %s", exc)
@@ -1709,14 +1816,15 @@ def _render_ask_tab() -> None:
             formatted_history.append({"role": "model", "text": turn["answer"]})
 
         try:
-            client = _gemini_client()
+            client = _llm_client(LLM_PROVIDER)
+            active_model = GROQ_MODEL if LLM_PROVIDER == "groq" else GEMINI_MODEL
             with st.spinner("Reading through the comments..."):
                 answer, cited_ids = answer_question(
                     q,
                     formatted_history,
                     comments,
                     client,
-                    GEMINI_MODEL,
+                    active_model,
                 )
         except Exception as exc:
             # Graceful offline/demo answer extraction if API key is missing
@@ -1955,11 +2063,14 @@ def _render_diagnostics_tab() -> None:
             unsafe_allow_html=True,
         )
     with m_col3:
+        active_disp_model = GROQ_MODEL if LLM_PROVIDER == "groq" else GEMINI_MODEL
+        active_disp_delay = GROQ_DELAY if LLM_PROVIDER == "groq" else GEMINI_DELAY
+        active_prov_name = "Groq" if LLM_PROVIDER == "groq" else "Gemini"
         st.markdown(
             f'<div style="background:#FFFFFF;border:1px solid #E1E6E3;border-radius:12px;padding:14px 16px;">'
-            f'<div style="font-size:12px;color:var(--muted);">Active Gemini model</div>'
-            f'<div style="font-size:20px;font-weight:650;color:#0F766E;">{GEMINI_MODEL}</div>'
-            f'<div style="font-size:12px;color:var(--muted);">{GEMINI_DELAY}s inter-batch delay</div>'
+            f'<div style="font-size:12px;color:var(--muted);">Active {active_prov_name} model</div>'
+            f'<div style="font-size:17px;font-weight:650;color:#0F766E;word-break:break-all;">{active_disp_model}</div>'
+            f'<div style="font-size:12px;color:var(--muted);">{active_disp_delay}s inter-batch delay</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -1980,8 +2091,22 @@ def _render_diagnostics_tab() -> None:
     # API Connection Diagnostics Tool
     with st.expander("Test API connectivity now", expanded=(unclass > 0 or len(err_events) > 0)):
         st.markdown('<div class="note" style="margin-bottom:10px;">Run a lightweight ping to verify your API credentials directly:</div>', unsafe_allow_html=True)
-        t_col1, t_col2 = st.columns(2)
+        t_col1, t_col2, t_col3 = st.columns(3)
         with t_col1:
+            if st.button("Ping Groq API", key="diag_test_groq", use_container_width=True):
+                try:
+                    gr_client = _groq_client()
+                    with st.spinner("Testing Groq API connection..."):
+                        res = test_groq_connection(gr_client, GROQ_MODEL)
+                        if res["status"] == "ok":
+                            st.success(f"✓ {res['message']}")
+                        else:
+                            st.error(f"✗ {res['message']}")
+                            if res.get("details"):
+                                st.code(json.dumps(res["details"], indent=2))
+                except Exception as exc:
+                    st.error(f"Groq client setup error: {exc}")
+        with t_col2:
             if st.button("Ping Gemini API", key="diag_test_gemini", use_container_width=True):
                 try:
                     g_client = _gemini_client()
@@ -1995,7 +2120,7 @@ def _render_diagnostics_tab() -> None:
                                 st.code(json.dumps(res["details"], indent=2))
                 except Exception as exc:
                     st.error(f"Gemini client setup error: {exc}")
-        with t_col2:
+        with t_col3:
             if st.button("Ping YouTube Data API", key="diag_test_yt", use_container_width=True):
                 with st.spinner("Testing YouTube API connection..."):
                     res = test_youtube_connection()

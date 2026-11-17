@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 from typing import Optional
 
@@ -23,7 +24,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-from core.diagnostics import session_diagnostics, is_fatal_gemini_error
+from core.diagnostics import session_diagnostics, is_fatal_gemini_error, is_fatal_groq_error
 
 load_dotenv()
 
@@ -32,6 +33,18 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Environment defaults & Models
 # ---------------------------------------------------------------------------
+
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
+SUPPORTED_GROQ_MODELS = [
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.8-27b",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+]
+GROQ_API_KEY: str = os.environ.get("GROQ_API_KEY", "")
+GROQ_MODEL: str = os.environ.get("GROQ_MODEL", DEFAULT_GROQ_MODEL)
+GROQ_DELAY_SECONDS: float = float(os.environ.get("GROQ_DELAY_SECONDS", 3))
 
 DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
 SUPPORTED_GEMINI_MODELS = [
@@ -237,22 +250,138 @@ def build_prompt(batch: list[dict]) -> tuple[str, str]:
     return _SYSTEM_INSTRUCTION, user_prompt
 
 
+def extract_json_array(raw_text: str) -> list[dict]:
+    """
+    Safely extract a JSON array of dicts from raw LLM text.
+    Handles bare arrays, dictionary envelopes (e.g. {"comments": [...]}, {"data": [...]}),
+    and markdown-fenced code blocks (```json ... ```).
+    """
+    clean_text = raw_text.strip()
+    if clean_text.startswith("```"):
+        clean_text = re.sub(r"^```(?:json)?\s*", "", clean_text, flags=re.IGNORECASE)
+        clean_text = re.sub(r"\s*```$", "", clean_text)
+        clean_text = clean_text.strip()
+
+    data = json.loads(clean_text)
+    if isinstance(data, list):
+        return [item for item in data if isinstance(item, dict)]
+
+    if isinstance(data, dict):
+        for key in ["comments", "data", "results", "classifications", "items"]:
+            if key in data and isinstance(data[key], list):
+                return [item for item in data[key] if isinstance(item, dict)]
+        for val in data.values():
+            if isinstance(val, list):
+                return [item for item in val if isinstance(item, dict)]
+
+    raise ValueError(f"Could not extract JSON list from model response: {raw_text[:200]}")
+
+
+def classify_batch_groq(
+    batch: list[dict],
+    client,
+    model_name: str = DEFAULT_GROQ_MODEL,
+    delay: float = GROQ_DELAY_SECONDS,
+) -> list[dict] | None:
+    """
+    Classify a batch of comments using the Groq API.
+    Uses OpenAI-compatible chat completions with response_format={"type": "json_object"}.
+    Includes cross-model fallback across SUPPORTED_GROQ_MODELS when hitting rate limits (8K TPM)
+    or temporary model unavailabilities.
+    """
+    if not batch:
+        return []
+
+    system_instruction, user_prompt = build_prompt(batch)
+    full_system = (
+        system_instruction
+        + "\n\nCRITICAL INSTRUCTION: Return a JSON object with a single key 'comments' containing the array of objects matching the schema. Example: {\"comments\": [...]}. Do not include markdown or extra commentary."
+    )
+
+    models_to_try = [model_name] if model_name else []
+    for m in SUPPORTED_GROQ_MODELS:
+        if m not in models_to_try:
+            models_to_try.append(m)
+
+    backoff_seconds = [3, 6, 12]
+
+    for model_candidate in models_to_try:
+        for attempt, wait in enumerate(backoff_seconds, start=1):
+            t0 = time.time()
+            try:
+                session_diagnostics.info(
+                    "CLASSIFY",
+                    f"Classifying batch of {len(batch)} comments using Groq {model_candidate} (attempt {attempt}/{len(backoff_seconds)})",
+                )
+                response = client.chat.completions.create(
+                    model=model_candidate,
+                    messages=[
+                        {"role": "system", "content": full_system},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.1,
+                )
+                raw_text = (
+                    response.choices[0].message.content.strip()
+                    if response and response.choices and response.choices[0].message.content
+                    else ""
+                )
+                results = extract_json_array(raw_text)
+                if isinstance(results, list):
+                    latency = (time.time() - t0) * 1000
+                    session_diagnostics.success(
+                        "CLASSIFY",
+                        f"Batch of {len(results)} comments classified using Groq {model_candidate} in {latency:.0f}ms",
+                        duration_ms=latency,
+                    )
+                    if delay > 0:
+                        time.sleep(delay)
+                    return results
+
+                session_diagnostics.warning("CLASSIFY", f"Groq {model_candidate} returned invalid JSON array on attempt {attempt}")
+            except Exception as exc:  # noqa: BLE001
+                err_str = str(exc)
+                err_lower = err_str.lower()
+                is_fatal, reason = is_fatal_groq_error(exc)
+                if is_fatal and "rate limit" not in reason.lower() and "429" not in err_str:
+                    session_diagnostics.error(
+                        "CLASSIFY",
+                        f"Fatal Groq API error: {reason}",
+                        details={"model": model_candidate, "error": err_str},
+                    )
+                    raise ValueError(reason) from exc
+
+                # If 429 Rate Limit (e.g. 8K TPM hit) or model 404/not found:
+                # Switch to next fallback model immediately to use its separate quota bucket
+                if any(x in err_lower for x in ["429", "rate limit", "rate_limit", "tpm", "rpm", "404", "not_found", "not found"]):
+                    session_diagnostics.warning(
+                        "CLASSIFY",
+                        f"Groq model {model_candidate} rate limit or availability issue ({exc}); switching to fallback model bucket...",
+                    )
+                    break
+
+                logger.warning("Groq API error on attempt %d with %s: %s", attempt, model_candidate, exc)
+                session_diagnostics.warning("CLASSIFY", f"Attempt {attempt} failed on Groq {model_candidate}: {exc}")
+
+            if attempt < len(backoff_seconds):
+                time.sleep(wait)
+
+    session_diagnostics.error("CLASSIFY", f"Batch of {len(batch)} comments failed across all attempted Groq models.")
+    return None
+
+
 def classify_batch(
     batch: list[dict],
-    client: genai.Client,
-    model_name: str = GEMINI_MODEL,
-    delay: float = GEMINI_DELAY_SECONDS,
+    client,
+    model_name: str = DEFAULT_GROQ_MODEL,
+    delay: float = GROQ_DELAY_SECONDS,
 ) -> Optional[list[dict]]:
     """
-    Classify a batch of comments via the Gemini API.
-
-    Retries up to 3 times with exponential backoff (2 s, 4 s, 8 s).
-    Automatically falls back across supported Gemini models if a model is unavailable.
-
-    Returns
-    -------
-    List of classification result dicts, or None on total failure.
+    Classify a batch of comments. Routes to Groq or Gemini based on client or model name.
     """
+    if hasattr(client, "chat") or model_name in SUPPORTED_GROQ_MODELS or any(p in str(model_name) for p in ["openai/", "qwen/", "llama", "groq"]):
+        return classify_batch_groq(batch, client, model_name, delay)
     system_instruction, user_prompt = build_prompt(batch)
 
     generation_config = types.GenerateContentConfig(
@@ -425,29 +554,84 @@ def validate_results(results: list[dict], batch: list[dict]) -> list[dict]:
     return validated
 
 
+def summarize_comments_groq(
+    top_comments: list[dict],
+    theme_counts: list[tuple[str, int]],
+    client,
+    model_name: str = DEFAULT_GROQ_MODEL,
+) -> str:
+    """
+    Generate a 3-4 sentence plain-text summary of the comment section using Groq.
+    """
+    theme_lines = "\n".join(
+        f"  - {theme} ({count})" for theme, count in theme_counts[:8]
+    )
+
+    sample = sorted(
+        top_comments,
+        key=lambda c: (str(c.get("priority", "")).lower() == "high", c.get("likes", 0)),
+        reverse=True,
+    )[:80]
+
+    comment_lines = "\n".join(
+        f"[{c['comment_id']}] ({c.get('primary_sentiment','?')}) "
+        f"{c.get('original_text','')[:200]}"
+        for c in sample
+    )
+
+    prompt = (
+        "You are summarizing YouTube comment section data for a content creator.\n"
+        "Write 3 to 4 plain sentences. No emoji. No hype. No filler words like 'amazing' or 'fantastic'.\n"
+        "Cover:\n"
+        "1. What viewers generally liked or found valuable.\n"
+        "2. What they criticised or found lacking.\n"
+        "3. What they asked for (questions / suggestions).\n\n"
+        f"Top themes (from suggestions and criticism):\n{theme_lines or '  (none)'}\n\n"
+        f"Sample comments:\n{comment_lines}\n\n"
+        "Summary:"
+    )
+
+    models_to_try = [model_name] if model_name else []
+    for m in SUPPORTED_GROQ_MODELS:
+        if m not in models_to_try:
+            models_to_try.append(m)
+
+    session_diagnostics.info("SUMMARIZE", f"Starting summary generation via Groq with {len(sample)} sample comments...")
+    for model_candidate in models_to_try:
+        t0 = time.time()
+        try:
+            response = client.chat.completions.create(
+                model=model_candidate,
+                messages=[
+                    {"role": "system", "content": "You are a concise analytical assistant for creators. Plain text only. No emoji."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.3,
+            )
+            dur = (time.time() - t0) * 1000
+            txt = response.choices[0].message.content.strip() if response and response.choices else "Summary empty"
+            session_diagnostics.success("SUMMARIZE", f"Generated summary using Groq {model_candidate} in {dur:.0f}ms", duration_ms=dur)
+            return txt
+        except Exception as exc:  # noqa: BLE001
+            dur = (time.time() - t0) * 1000
+            session_diagnostics.warning("SUMMARIZE", f"Summary attempt failed on Groq {model_candidate} ({exc})", duration_ms=dur)
+
+    session_diagnostics.error("SUMMARIZE", "All Groq model candidates failed to generate summary.")
+    return "Summary could not be generated."
+
+
 def summarize_comments(
     top_comments: list[dict],
     theme_counts: list[tuple[str, int]],
-    client: genai.Client,
-    model_name: str = GEMINI_MODEL,
+    client,
+    model_name: str = DEFAULT_GROQ_MODEL,
 ) -> str:
     """
     Generate a 3-4 sentence plain-text summary of the comment section.
-
-    Covers: what viewers liked, what they criticised, what they asked for.
-    No hype words, no emoji.
-
-    Parameters
-    ----------
-    top_comments  : A representative sample of classified comment dicts.
-    theme_counts  : List of (theme, count) from analysis.theme_counts().
-    client        : Initialised google.genai.Client.
-    model_name    : Gemini model identifier.
-
-    Returns
-    -------
-    Plain summary string (3-4 sentences).
+    Routes to Groq or Gemini based on client or model name.
     """
+    if hasattr(client, "chat") or model_name in SUPPORTED_GROQ_MODELS or any(p in str(model_name) for p in ["openai/", "qwen/", "llama", "groq"]):
+        return summarize_comments_groq(top_comments, theme_counts, client, model_name)
     # Build theme list string.
     theme_lines = "\n".join(
         f"  - {theme} ({count})" for theme, count in theme_counts[:8]

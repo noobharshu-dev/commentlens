@@ -134,6 +134,80 @@ def is_fatal_gemini_error(exc: Exception) -> tuple[bool, str]:
     return False, ""
 
 
+def is_fatal_groq_error(exc: Exception) -> tuple[bool, str]:
+    """
+    Check if a Groq exception is an unrecoverable failure (invalid key, bad request).
+    Returns (is_fatal, human_readable_reason).
+    """
+    err_str = str(exc)
+    err_lower = err_str.lower()
+
+    if any(x in err_lower for x in ["invalid_api_key", "invalid api key", "authentication", "unauthorized", "401"]):
+        return True, "Invalid Groq API Key. Please verify your GROQ_API_KEY in Settings."
+
+    if "429" in err_str or "rate limit" in err_lower or "tpm" in err_lower or "rpm" in err_lower:
+        return True, "Groq Rate Limit Exceeded (HTTP 429). The free-tier 8K TPM or 30 RPM limit was reached."
+
+    if "400" in err_str or "bad_request" in err_lower:
+        return True, f"Groq Bad Request (400): {err_str[:120]}"
+
+    return False, ""
+
+
+def test_groq_connection(client, model_name: str = "openai/gpt-oss-120b") -> dict:
+    """
+    Test Groq API connectivity with a minimal ping prompt.
+    Returns dict with keys: status, latency_ms, model, message, details.
+    """
+    clean_model = model_name.strip() if model_name else "openai/gpt-oss-120b"
+    t0 = time.time()
+    try:
+        response = client.chat.completions.create(
+            model=clean_model,
+            messages=[
+                {"role": "user", "content": "Ping. Reply with one word: Pong."}
+            ],
+            temperature=0.1,
+            max_tokens=10,
+        )
+        latency = (time.time() - t0) * 1000
+        reply = (
+            response.choices[0].message.content.strip()
+            if response and response.choices and response.choices[0].message.content
+            else "No text"
+        )
+        session_diagnostics.success(
+            "HEALTH",
+            f"Groq connection OK ({clean_model}) in {latency:.0f}ms",
+            {"reply": reply, "latency_ms": round(latency, 1)},
+            duration_ms=latency,
+        )
+        return {
+            "status": "ok",
+            "latency_ms": round(latency, 1),
+            "model": clean_model,
+            "message": f"Successfully connected to Groq API ({clean_model}) in {latency:.0f}ms.",
+            "details": {"reply": reply},
+        }
+    except Exception as exc:
+        latency = (time.time() - t0) * 1000
+        is_fatal, reason = is_fatal_groq_error(exc)
+        err_msg = reason if is_fatal else str(exc)
+        session_diagnostics.error(
+            "HEALTH",
+            f"Groq connection test failed ({clean_model}): {err_msg}",
+            {"error": str(exc), "fatal": is_fatal},
+            duration_ms=latency,
+        )
+        return {
+            "status": "error",
+            "latency_ms": round(latency, 1),
+            "model": clean_model,
+            "message": f"Groq API test failed: {err_msg}",
+            "details": {"error": str(exc), "is_fatal": is_fatal},
+        }
+
+
 def test_gemini_connection(client, model_name: str = "gemini-3.5-flash-lite") -> dict:
     """
     Test Gemini API connectivity with a minimal ping prompt.

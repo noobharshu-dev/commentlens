@@ -21,7 +21,12 @@ from typing import Optional
 from google import genai
 from google.genai import types
 
-from core.classifier import sanitize_model_name, SUPPORTED_GEMINI_MODELS
+from core.classifier import (
+    sanitize_model_name,
+    SUPPORTED_GEMINI_MODELS,
+    DEFAULT_GROQ_MODEL,
+    SUPPORTED_GROQ_MODELS,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -131,15 +136,81 @@ def pick_top_quotes(comments: list[dict]) -> list[dict]:
     return quotes[:5]
 
 
+def answer_question_groq(
+    question: str,
+    history: list[dict],
+    comments: list[dict],
+    client,
+    model_name: str = DEFAULT_GROQ_MODEL,
+) -> tuple[str, list[int]]:
+    """
+    Answer a creator's question about comments using Groq.
+    """
+    system_instruction = (
+        "You are an assistant helping a YouTube creator understand their audience feedback.\n"
+        "Answer the question concisely and accurately based ONLY on the provided comment data.\n"
+        "Cite specific comments using [c<id>] format (e.g. [c12], [c45]).\n"
+        "Do not invent feedback that is not in the data.\n"
+        "Keep your answer under 150 words. No emoji."
+    )
+
+    sample = sorted(
+        comments,
+        key=lambda c: (str(c.get("priority", "")).lower() == "high", c.get("likes", 0)),
+        reverse=True,
+    )[:60]
+
+    context_lines = "\n".join(
+        f"[c{c.get('comment_id', i)}] ({c.get('primary_sentiment', 'Neutral')}) {c.get('original_text', '')[:200]}"
+        for i, c in enumerate(sample)
+    )
+
+    messages = [{"role": "system", "content": system_instruction}]
+    recent_history = history[-3:] if len(history) > 3 else history
+    for turn in recent_history:
+        messages.append({"role": turn.get("role", "user"), "content": turn.get("text", "")})
+
+    messages.append({
+        "role": "user",
+        "content": f"Comment data:\n{context_lines}\n\nQuestion: {question}"
+    })
+
+    models_to_try = [model_name] if model_name else []
+    for m in SUPPORTED_GROQ_MODELS:
+        if m not in models_to_try:
+            models_to_try.append(m)
+
+    answer_str = ""
+    for model_candidate in models_to_try:
+        try:
+            response = client.chat.completions.create(
+                model=model_candidate,
+                messages=messages,
+                temperature=0.3,
+            )
+            if response and response.choices and response.choices[0].message.content:
+                answer_str = response.choices[0].message.content.strip()
+                break
+        except Exception:
+            continue
+
+    if not answer_str:
+        raise ValueError("Could not generate an answer with the available Groq models.")
+
+    cited_ids = _extract_citations(answer_str)
+    return answer_str, cited_ids
+
+
 def answer_question(
     question: str,
     history: list[dict],
     comments: list[dict],
-    client: genai.Client,
-    model_name: str,
+    client,
+    model_name: str = DEFAULT_GROQ_MODEL,
 ) -> tuple[str, list[int]]:
     """
     Answer a creator's question grounded in comment data.
+    Routes to Groq or Gemini based on client or model name.
 
     Strategy
     --------
@@ -155,8 +226,8 @@ def answer_question(
     question   : User's natural-language question.
     history    : List of {"role": "user"|"model", "text": str} turns.
     comments   : Full list of classified comment dicts.
-    client     : Initialised google.genai.Client.
-    model_name : Gemini model identifier.
+    client     : Initialised google.genai.Client or Groq client.
+    model_name : Model identifier.
 
     Returns
     -------
@@ -164,6 +235,8 @@ def answer_question(
         answer_str    : Plain answer text with inline [cN] citations.
         cited_ids_list: List of unique integer comment IDs cited.
     """
+    if hasattr(client, "chat") or model_name in SUPPORTED_GROQ_MODELS or any(p in str(model_name) for p in ["openai/", "qwen/", "llama", "groq"]):
+        return answer_question_groq(question, history, comments, client, model_name)
     # Build keyword list.
     keywords = [w.lower() for w in re.findall(r"\w+", question) if len(w) > 3]
 
