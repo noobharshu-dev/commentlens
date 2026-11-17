@@ -1,0 +1,121 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=1440"><style>:root{--paper:#F5F7F6;--surface:#fff;--ink:#16211F;--muted:#667370;--faint:#9AA5A2;--line:#E1E6E3;--accent:#0F766E;--accent-soft:#E4F1EF;--pos:#2F8A5B;--neg:#C2453D;--neu:#A3ABA8;--mix:#D4A017;--ques:#3B6FD4;--warn:#9A6B12}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;font-size:14px;line-height:1.55;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;font-feature-settings:"cv11","ss03"}
+.tab{font-variant-numeric:tabular-nums}
+.top{height:64px;border-bottom:1px solid var(--line);background:var(--paper);display:flex;align-items:center;justify-content:space-between;padding:0 48px}
+.wm{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.01em}
+.top nav{display:flex;gap:28px;color:var(--muted);font-weight:500}
+.top nav b{color:var(--ink);font-weight:600}
+.wrap{max-width:1180px;margin:0 auto;padding:0 40px}
+.btn{height:40px;padding:0 18px;border-radius:8px;font:600 14px Inter;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.lg{height:52px;padding:0 28px;font-size:15px}
+h1{font-family:"Inter Display",Inter;font-weight:650;letter-spacing:-.025em}
+.muted{color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.pill{height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);display:inline-flex;align-items:center;gap:8px;font-weight:500;white-space:nowrap}
+.pill .n{color:var(--muted);font-variant-numeric:tabular-nums}
+.pill.on{background:var(--accent);border-color:var(--accent);color:#fff}.pill.on .n{color:#CDEBE7}
+.pills{display:flex;flex-wrap:wrap;gap:10px}
+.mood{display:flex;gap:4px}
+.seg{height:52px;border-radius:10px}
+.seglab{margin-top:10px;font-size:13px;color:var(--muted)}
+.seglab b{display:block;color:var(--ink);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.tbl{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tbl .r{display:grid;grid-template-columns:140px 1fr 60px 120px 200px 90px;align-items:center;gap:16px;padding:0 20px;min-height:58px;border-top:1px solid var(--line)}
+.tbl .r.h{min-height:42px;border-top:0;color:var(--muted);font-size:13px;font-weight:500;background:#FBFCFB}
+.tbl .r.sel{background:var(--accent-soft)}
+.tbl .au{font-weight:600}.tbl .lk{text-align:right;font-variant-numeric:tabular-nums}
+.chip{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;margin-right:4px;background:#EEF1EF;color:#4A5754}
+.chip.q{background:#E6EDFB;color:#2B55B0}.chip.b{background:#FBE9E7;color:#9C2F28}.chip.s{background:#E4F1EF;color:#0B5F58}.chip.h{background:#FFF1D6;color:#7A5200}
+.sent{display:flex;align-items:center;gap:8px}
+.h2{font-family:"Inter Display",Inter;font-size:20px;font-weight:650;letter-spacing:-.015em}
+.search{height:40px;width:300px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:0 14px;display:flex;align-items:center;color:var(--faint)}
+.note{font-size:13px;color:var(--muted)}
+.toggle{display:inline-flex;align-items:center;gap:10px;color:var(--muted);font-weight:500}
+.toggle i{width:34px;height:20px;border-radius:999px;background:#CBD3D0;position:relative;display:inline-block}.toggle i:after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;background:#fff;border-radius:50%}
+.foot{padding:40px 0 28px;color:var(--faint);font-size:12px}
+:root{
+--paper:#EEF4F1;--surface:#FFFFFF;--line:#E4ECE9;
+--clay:10px 10px 22px rgba(15,118,110,.16),-8px -8px 18px rgba(255,255,255,.95),inset 3px 3px 6px rgba(255,255,255,.9),inset -4px -4px 8px rgba(15,118,110,.07);
+--clay-sm:6px 6px 14px rgba(15,118,110,.14),-5px -5px 12px rgba(255,255,255,.95),inset 2px 2px 4px rgba(255,255,255,.9);
+--clay-press:inset 5px 5px 10px rgba(15,118,110,.18),inset -4px -4px 8px rgba(255,255,255,.8);
+--mint:#CFEDE6;--sky:#D6E8FB;--lilac:#E6DDF8;--peach:#FDE3CF;--butter:#FFF0C2;--rose:#F9D5D5;
+}
+body{background:radial-gradient(circle at 88% 4%,#D9EEF7 0,transparent 38%),radial-gradient(circle at 4% 96%,#EBE2FA 0,transparent 42%),#EEF4F1}
+.top{background:transparent;border-bottom:none;padding-top:14px;padding-bottom:14px;height:auto}
+.top>.wm,.top nav{background:var(--surface);box-shadow:var(--clay-sm);border-radius:999px}
+.top>.wm{padding:8px 16px 8px 8px}
+.top nav{padding:10px 22px;gap:22px}
+.btn{border:none;background:var(--surface);box-shadow:var(--clay-sm);border-radius:14px;color:var(--ink)}
+.btn.p{background:linear-gradient(160deg,#17918A,#0F766E);box-shadow:8px 8px 18px rgba(15,118,110,.32),inset 2px 2px 4px rgba(255,255,255,.35),inset -3px -3px 6px rgba(0,0,0,.12);color:#fff}
+.pill{border:none;background:var(--surface);box-shadow:var(--clay-sm);height:40px;padding:0 16px}
+.pill.on{background:linear-gradient(160deg,#17918A,#0F766E);box-shadow:8px 8px 16px rgba(15,118,110,.3),inset 2px 2px 4px rgba(255,255,255,.3)}
+.pill.on .n{color:#D8F3EE}
+.tbl{border:none;border-radius:26px;box-shadow:var(--clay);background:var(--surface);padding:8px}
+.tbl .r{border-top:1px solid #F0F4F2;border-radius:16px;margin:2px 0;padding:0 16px}
+.tbl .r.h{background:transparent;border-top:0}
+.tbl .r.sel{background:var(--mint);box-shadow:var(--clay-press)}
+.chip{border-radius:999px;box-shadow:var(--clay-sm);padding:3px 11px;margin-right:6px}
+.chip.b{background:var(--rose)}.chip.q{background:var(--sky)}.chip.s{background:var(--mint)}.chip.h{background:var(--butter)}
+.search{border:none;background:var(--surface);box-shadow:var(--clay-press);border-radius:14px;width:280px;margin:4px}
+.seg{border-radius:20px!important;box-shadow:4px 6px 10px rgba(15,118,110,.14),inset 0 2px 3px rgba(255,255,255,.45)}
+.mood{gap:6px}
+.toggle i{box-shadow:var(--clay-press)}
+/* ---- colour and motion ---- */
+body{position:relative;overflow-x:hidden}
+body::before,body::after{content:"";position:fixed;z-index:-1;border-radius:50%;filter:blur(60px);opacity:.55;pointer-events:none}
+body::before{width:520px;height:520px;left:-140px;top:-120px;background:#BDE9DF;animation:drift1 22s ease-in-out infinite alternate}
+body::after{width:460px;height:460px;right:-120px;bottom:-140px;background:#D9CCF5;animation:drift2 26s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(120px,80px) scale(1.12)}}
+@keyframes drift2{to{transform:translate(-100px,-70px) scale(1.08)}}
+.seg{transform-origin:left center;animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+.mood .seg:nth-child(1){animation-delay:.05s}.mood .seg:nth-child(2){animation-delay:.15s}
+.mood .seg:nth-child(3){animation-delay:.25s}.mood .seg:nth-child(4){animation-delay:.35s}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.pill,.btn,.chip{transition:transform .2s ease,box-shadow .2s ease}
+.pill:hover,.btn:hover{transform:translateY(-2px);box-shadow:var(--clay)}
+.pill:active,.btn:active{transform:translateY(1px);box-shadow:var(--clay-press)}
+.pill.on:hover{box-shadow:10px 10px 20px rgba(15,118,110,.36),inset 2px 2px 4px rgba(255,255,255,.3)}
+.tbl .r{transition:background .2s ease,transform .2s ease}
+.tbl .r:not(.h):hover{background:#F2FAF8;transform:translateX(3px)}
+.draw{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.8s ease-out .6s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(15,118,110,.45)}50%{box-shadow:0 0 0 9px rgba(15,118,110,0)}}
+.bar-fill{transform-origin:left;animation:grow 1.2s cubic-bezier(.2,.8,.2,1) .3s both}
+.toggle i{transition:background .25s}
+.toggle:hover i{background:#A8D8CF}
+.h2{color:#0B4F4A}
+.chip.q{box-shadow:var(--clay-sm),0 0 0 1px rgba(59,111,212,.15)}
+.chip.s{box-shadow:var(--clay-sm),0 0 0 1px rgba(15,118,110,.15)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.draw{stroke-dashoffset:0}}
+/* ---- stronger colour pass ---- */
+:root{--surface:#FBFAFF}
+body{background:radial-gradient(circle at 92% 6%,#A9E4F5 0,transparent 36%),radial-gradient(circle at 2% 98%,#D4BFF7 0,transparent 40%),radial-gradient(circle at 60% 110%,#FFC9A8 0,transparent 34%),linear-gradient(160deg,#BDEBDD 0%,#D9ECF8 55%,#E9DDFA 100%)!important}
+body::before{opacity:.85;background:#7FD8C4}
+body::after{opacity:.8;background:#B8A2F0}
+.tbl{background:linear-gradient(180deg,#FFFFFF,#F4F0FF)}
+.tbl .r.h{color:#4B3F8A}
+.tbl .r:not(.h):hover{background:#E6FAF5}
+div[style*="box-shadow:var(--clay)"]{background:linear-gradient(180deg,#F1FBF8,#EEF4FF)!important}
+.search{background:#EAF7FF!important}
+.toggle i{background:#B9C7F0}
+.pill{background:#FFFFFF}
+.pill.t-positive{background:#CDF2E2}.pill.t-negative{background:#FAD4D2}.pill.t-neutral{background:#E4E8EE}
+.pill.t-questions{background:#D5E4FC}.pill.t-suggestions{background:#E8DDFB}.pill.t-bug{background:#FDE0C6}
+.pill.t-praise{background:#D8F5C9}.pill.t-duplicates{background:#FFF2C4}.pill.t-replies{background:#D4EEF9}
+.pill.t-spam{background:#F3D6EA}.pill.t-top{background:#FFE8D6}.pill.t-all.on{background:linear-gradient(160deg,#17918A,#0F766E)}
+.btn{background:#FFF1E4}
+.btn.p{background:linear-gradient(160deg,#1FA39A,#0F766E)}
+.top>.wm,.top nav{background:linear-gradient(90deg,#FFFFFF,#E8F8F4)}
+.seg{filter:saturate(1.15)}
+</style></head><body style="width:1440px"><div class="top"><div class="wm"><svg width="30" height="30" viewBox="0 0 120 120"><circle cx="52" cy="52" r="40" fill="#fff" stroke="#0F766E" stroke-width="10"/><line x1="82" y1="82" x2="108" y2="108" stroke="#0F766E" stroke-width="12" stroke-linecap="round"/><path d="M30 36h44a6 6 0 0 1 6 6v20a6 6 0 0 1-6 6H50l-12 10v-10h-8a6 6 0 0 1-6-6V42a6 6 0 0 1 6-6z" fill="#E4F1EF" stroke="#0F766E" stroke-width="3"/><circle cx="38" cy="52" r="4.5" fill="#2F8A5B"/><circle cx="52" cy="52" r="4.5" fill="#A3ABA8"/><circle cx="66" cy="52" r="4.5" fill="#C2453D"/></svg>CommentLens</div><nav><span><b>Analyze</b></span><span>Saved videos</span><span>Settings</span></nav></div><div class="wrap" style="padding-top:44px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px"><div><h1 style="font-size:34px;line-height:1.15;max-width:760px">I rebuilt my editing setup for under $800</h1><div class="muted" style="margin-top:10px;display:flex;gap:28px"><span>Studio Notes</span><span class="tab">184,203 views</span><span class="tab">1,000 comments analyzed</span><span>2 minutes ago</span></div></div><div style="display:flex;gap:10px"><span class="btn">Re-analyze</span><span class="btn p">Download report</span></div></div>
+<div style="display:grid;grid-template-columns:200px 1fr;gap:48px;margin-top:44px;align-items:end"><div><div class="tab" style="font-family:'Inter Display';font-size:84px;font-weight:650;letter-spacing:-.04em;line-height:.9">64</div><div style="margin-top:8px;font-weight:600">Mostly positive</div><div class="note">Mood score out of 100</div></div><div><div class="mood"><div class="seg" style="flex:580;background:var(--pos);height:60px"></div><div class="seg" style="flex:140;background:var(--neu);height:60px"></div><div class="seg" style="flex:60;background:var(--mix);height:60px"></div><div class="seg" style="flex:220;background:var(--neg);height:60px"></div></div><div style="display:flex;gap:4px"><div class="seglab" style="flex:580;min-width:0;white-space:nowrap"><b>Positive</b>580 &nbsp; 58%</div><div class="seglab" style="flex:140;min-width:0;white-space:nowrap"><b>Neutral</b>140 &nbsp; 14%</div><div class="seglab" style="flex:60;min-width:0;white-space:nowrap"><b>Mixed</b>60 &nbsp; 6%</div><div class="seglab" style="flex:220;min-width:0;white-space:nowrap"><b>Negative</b>220 &nbsp; 22%</div></div></div></div>
+<div style="margin-top:36px"><div class="pills"><span class="pill t-all on">All <span class="n">1,000</span></span><span class="pill t-positive"><span class="dot" style="background:var(--pos)"></span>Positive <span class="n">580</span></span><span class="pill t-negative"><span class="dot" style="background:var(--neg)"></span>Negative <span class="n">220</span></span><span class="pill t-neutral"><span class="dot" style="background:var(--neu)"></span>Neutral <span class="n">140</span></span><span class="pill t-questions"><span class="dot" style="background:var(--ques)"></span>Questions <span class="n">134</span></span><span class="pill t-suggestions">Suggestions <span class="n">96</span></span><span class="pill t-bug">Bug reports <span class="n">11</span></span><span class="pill t-praise">Praise <span class="n">402</span></span><span class="pill t-duplicates">Duplicates <span class="n">87</span></span><span class="pill t-replies">Replies <span class="n">213</span></span><span class="pill t-spam">Spam <span class="n">24</span></span><span class="pill t-top">Top liked <span class="n"></span></span></div><div style="display:flex;justify-content:space-between;margin-top:14px"><span class="note">A comment can belong to more than one group, so counts can add up to more than the total.</span><span class="toggle"><i></i>Show toxic comments</span></div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:72px;margin-top:56px"><div><div class="h2">What viewers are saying</div><p style="margin-top:12px;font-size:16px;line-height:1.7;max-width:540px">Most viewers liked the editing breakdown and the final result, and many call it the clearest guide they have watched. The main complaints are the slow first five minutes and audio that drops near 4:12. Viewers are asking for a part 2 on colour grading, and for Hindi subtitles.</p></div><div><div class="h2">What people keep mentioning</div><div style="margin-top:10px"><div style="display:grid;grid-template-columns:130px 1fr 36px;gap:14px;align-items:center;margin:11px 0"><span>Pacing</span><span style="height:12px;background:#E2EDE9;border-radius:6px;box-shadow:var(--clay-press)"><i class="bar-fill" style="display:block;height:12px;width:100%;background:linear-gradient(90deg,#4FB8AC,#0F766E);border-radius:6px;box-shadow:2px 2px 6px rgba(15,118,110,.25)"></i></span><span class="tab muted" style="text-align:right">64</span></div><div style="display:grid;grid-template-columns:130px 1fr 36px;gap:14px;align-items:center;margin:11px 0"><span>Audio quality</span><span style="height:12px;background:#E2EDE9;border-radius:6px;box-shadow:var(--clay-press)"><i class="bar-fill" style="display:block;height:12px;width:64%;background:linear-gradient(90deg,#4FB8AC,#0F766E);border-radius:6px;box-shadow:2px 2px 6px rgba(15,118,110,.25)"></i></span><span class="tab muted" style="text-align:right">41</span></div><div style="display:grid;grid-template-columns:130px 1fr 36px;gap:14px;align-items:center;margin:11px 0"><span>Part 2 request</span><span style="height:12px;background:#E2EDE9;border-radius:6px;box-shadow:var(--clay-press)"><i class="bar-fill" style="display:block;height:12px;width:59%;background:linear-gradient(90deg,#4FB8AC,#0F766E);border-radius:6px;box-shadow:2px 2px 6px rgba(15,118,110,.25)"></i></span><span class="tab muted" style="text-align:right">38</span></div><div style="display:grid;grid-template-columns:130px 1fr 36px;gap:14px;align-items:center;margin:11px 0"><span>Beginner steps</span><span style="height:12px;background:#E2EDE9;border-radius:6px;box-shadow:var(--clay-press)"><i class="bar-fill" style="display:block;height:12px;width:45%;background:linear-gradient(90deg,#4FB8AC,#0F766E);border-radius:6px;box-shadow:2px 2px 6px rgba(15,118,110,.25)"></i></span><span class="tab muted" style="text-align:right">29</span></div><div style="display:grid;grid-template-columns:130px 1fr 36px;gap:14px;align-items:center;margin:11px 0"><span>Sponsor length</span><span style="height:12px;background:#E2EDE9;border-radius:6px;box-shadow:var(--clay-press)"><i class="bar-fill" style="display:block;height:12px;width:34%;background:linear-gradient(90deg,#4FB8AC,#0F766E);border-radius:6px;box-shadow:2px 2px 6px rgba(15,118,110,.25)"></i></span><span class="tab muted" style="text-align:right">22</span></div><div style="display:grid;grid-template-columns:130px 1fr 36px;gap:14px;align-items:center;margin:11px 0"><span>Subtitles</span><span style="height:12px;background:#E2EDE9;border-radius:6px;box-shadow:var(--clay-press)"><i class="bar-fill" style="display:block;height:12px;width:29%;background:linear-gradient(90deg,#4FB8AC,#0F766E);border-radius:6px;box-shadow:2px 2px 6px rgba(15,118,110,.25)"></i></span><span class="tab muted" style="text-align:right">19</span></div><div style="display:grid;grid-template-columns:130px 1fr 36px;gap:14px;align-items:center;margin:11px 0"><span>Thumbnail</span><span style="height:12px;background:#E2EDE9;border-radius:6px;box-shadow:var(--clay-press)"><i class="bar-fill" style="display:block;height:12px;width:21%;background:linear-gradient(90deg,#4FB8AC,#0F766E);border-radius:6px;box-shadow:2px 2px 6px rgba(15,118,110,.25)"></i></span><span class="tab muted" style="text-align:right">14</span></div><div style="display:grid;grid-template-columns:130px 1fr 36px;gap:14px;align-items:center;margin:11px 0"><span>Broken links</span><span style="height:12px;background:#E2EDE9;border-radius:6px;box-shadow:var(--clay-press)"><i class="bar-fill" style="display:block;height:12px;width:17%;background:linear-gradient(90deg,#4FB8AC,#0F766E);border-radius:6px;box-shadow:2px 2px 6px rgba(15,118,110,.25)"></i></span><span class="tab muted" style="text-align:right">11</span></div></div></div></div>
+<div style="margin-top:56px"><div style="display:flex;justify-content:space-between;align-items:baseline"><div class="h2">Mood by day</div><div class="note" style="display:flex;gap:18px"><span><span class="dot" style="background:var(--pos)"></span> Positive</span><span><span class="dot" style="background:var(--neg)"></span> Negative</span></div></div><div style="margin-top:12px;background:var(--surface);border:none;border-radius:26px;box-shadow:var(--clay);padding:18px 14px 6px"><svg width="1100" height="210" viewBox="0 0 1100 210" style="display:block"><line x1="20" x2="1080" y1="30" y2="30" stroke="#E6EAE7"/><line x1="20" x2="1080" y1="80" y2="80" stroke="#E6EAE7"/><line x1="20" x2="1080" y1="130" y2="130" stroke="#E6EAE7"/><path d="M20,57 L102,46 L183,33 L265,79 L346,83 L428,88 L509,94 L591,109 L672,120 L754,132 L835,128 L917,124 L998,114 L1080,101 L1080,180 L20,180Z" fill="#2F8A5B" opacity=".08"/><path class="draw" pathLength="1" d="M20,57 L102,46 L183,33 L265,79 L346,83 L428,88 L509,94 L591,109 L672,120 L754,132 L835,128 L917,124 L998,114 L1080,101" fill="none" stroke="#2F8A5B" stroke-width="2.5"/><path class="draw" pathLength="1" d="M20,143 L102,136 L183,141 L265,146 L346,151 L428,162 L509,163 L591,160 L672,156 L754,150 L835,144 L917,148 L998,139 L1080,138" fill="none" stroke="#C2453D" stroke-width="2.5"/><circle cx="183" cy="33" r="5" fill="#fff" stroke="#2F8A5B" stroke-width="2.5"/><text x="20.0" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle">Nov 3</text><text x="101.53846153846153" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle"></text><text x="183.07692307692307" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle"></text><text x="264.61538461538464" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle">Nov 6</text><text x="346.15384615384613" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle"></text><text x="427.6923076923077" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle"></text><text x="509.2307692307692" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle">Nov 9</text><text x="590.7692307692307" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle"></text><text x="672.3076923076923" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle"></text><text x="753.8461538461538" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle">Nov 12</text><text x="835.3846153846154" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle"></text><text x="916.9230769230769" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle"></text><text x="998.4615384615385" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle">Nov 15</text><text x="1080.0" y="204" font-size="11" fill="#9AA5A2" text-anchor="middle"></text><text x="195" y="19" font-size="12" font-weight="600" fill="#16211F">Upload day</text></svg></div><p class="note" style="margin-top:10px">Positive comments peaked on upload day. Negative comments stayed low until the sponsor segment was mentioned.</p></div>
+<div style="margin-top:56px;display:flex;justify-content:space-between;align-items:center"><div><div class="h2">Comments</div><div class="note" style="margin-top:2px">Showing 1,000 comments, sorted by likes</div></div><div class="search">Search comments</div></div>
+<div class="tbl" style="margin-top:16px"><div class="r h"><span>Author</span><span>Comment</span><span style="text-align:right">Likes</span><span>Sentiment</span><span>Labels</span><span>Priority</span></div><div class="r"><span class="au">@maya_k</span><span>Best explanation of an editing setup I have seen. Thank you.</span><span class="lk">412</span><span class="sent"><span class="dot" style="background:var(--pos)"></span>Positive</span><span><span class="chip s">Praise</span></span><span>Low</span></div><div class="r"><span class="au">@dev_arjun</span><span>Will there be a part 2 covering colour grading?</span><span class="lk">268</span><span class="sent"><span class="dot" style="background:var(--pos)"></span>Positive</span><span><span class="chip q">Question</span><span class="chip s">Suggestion</span></span><span>High</span></div><div class="r"><span class="au">@sana.reads</span><span>Subscribed after this video. Please keep going.</span><span class="lk">190</span><span class="sent"><span class="dot" style="background:var(--pos)"></span>Positive</span><span><span class="chip s">Praise</span></span><span>Low</span></div><div class="r"><span class="au">@priya.s</span><span>Which microphone did you use for the voiceover?</span><span class="lk">131</span><span class="sent"><span class="dot" style="background:var(--neu)"></span>Neutral</span><span><span class="chip q">Question</span></span><span>Medium</span></div><div class="r"><span class="au">@rohit_77</span><span>The audio cuts out around 4:12. I had to restart the video twice.</span><span class="lk">96</span><span class="sent"><span class="dot" style="background:var(--neg)"></span>Negative</span><span><span class="chip b">Bug report</span></span><span>High</span></div></div>
+<div class="foot">Design reference with example data.</div></div></body></html>

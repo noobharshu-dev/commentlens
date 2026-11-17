@@ -1,0 +1,122 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=390"><style>:root{--paper:#F5F7F6;--surface:#fff;--ink:#16211F;--muted:#667370;--faint:#9AA5A2;--line:#E1E6E3;--accent:#0F766E;--accent-soft:#E4F1EF;--pos:#2F8A5B;--neg:#C2453D;--neu:#A3ABA8;--mix:#D4A017;--ques:#3B6FD4;--warn:#9A6B12}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;font-size:14px;line-height:1.55;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;font-feature-settings:"cv11","ss03"}
+.tab{font-variant-numeric:tabular-nums}
+.top{height:64px;border-bottom:1px solid var(--line);background:var(--paper);display:flex;align-items:center;justify-content:space-between;padding:0 48px}
+.wm{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.01em}
+.top nav{display:flex;gap:28px;color:var(--muted);font-weight:500}
+.top nav b{color:var(--ink);font-weight:600}
+.wrap{max-width:1180px;margin:0 auto;padding:0 40px}
+.btn{height:40px;padding:0 18px;border-radius:8px;font:600 14px Inter;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.lg{height:52px;padding:0 28px;font-size:15px}
+h1{font-family:"Inter Display",Inter;font-weight:650;letter-spacing:-.025em}
+.muted{color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.pill{height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);display:inline-flex;align-items:center;gap:8px;font-weight:500;white-space:nowrap}
+.pill .n{color:var(--muted);font-variant-numeric:tabular-nums}
+.pill.on{background:var(--accent);border-color:var(--accent);color:#fff}.pill.on .n{color:#CDEBE7}
+.pills{display:flex;flex-wrap:wrap;gap:10px}
+.mood{display:flex;gap:4px}
+.seg{height:52px;border-radius:10px}
+.seglab{margin-top:10px;font-size:13px;color:var(--muted)}
+.seglab b{display:block;color:var(--ink);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.tbl{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tbl .r{display:grid;grid-template-columns:140px 1fr 60px 120px 200px 90px;align-items:center;gap:16px;padding:0 20px;min-height:58px;border-top:1px solid var(--line)}
+.tbl .r.h{min-height:42px;border-top:0;color:var(--muted);font-size:13px;font-weight:500;background:#FBFCFB}
+.tbl .r.sel{background:var(--accent-soft)}
+.tbl .au{font-weight:600}.tbl .lk{text-align:right;font-variant-numeric:tabular-nums}
+.chip{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;margin-right:4px;background:#EEF1EF;color:#4A5754}
+.chip.q{background:#E6EDFB;color:#2B55B0}.chip.b{background:#FBE9E7;color:#9C2F28}.chip.s{background:#E4F1EF;color:#0B5F58}.chip.h{background:#FFF1D6;color:#7A5200}
+.sent{display:flex;align-items:center;gap:8px}
+.h2{font-family:"Inter Display",Inter;font-size:20px;font-weight:650;letter-spacing:-.015em}
+.search{height:40px;width:300px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:0 14px;display:flex;align-items:center;color:var(--faint)}
+.note{font-size:13px;color:var(--muted)}
+.toggle{display:inline-flex;align-items:center;gap:10px;color:var(--muted);font-weight:500}
+.toggle i{width:34px;height:20px;border-radius:999px;background:#CBD3D0;position:relative;display:inline-block}.toggle i:after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;background:#fff;border-radius:50%}
+.foot{padding:40px 0 28px;color:var(--faint);font-size:12px}
+:root{
+--paper:#EEF4F1;--surface:#FFFFFF;--line:#E4ECE9;
+--clay:10px 10px 22px rgba(15,118,110,.16),-8px -8px 18px rgba(255,255,255,.95),inset 3px 3px 6px rgba(255,255,255,.9),inset -4px -4px 8px rgba(15,118,110,.07);
+--clay-sm:6px 6px 14px rgba(15,118,110,.14),-5px -5px 12px rgba(255,255,255,.95),inset 2px 2px 4px rgba(255,255,255,.9);
+--clay-press:inset 5px 5px 10px rgba(15,118,110,.18),inset -4px -4px 8px rgba(255,255,255,.8);
+--mint:#CFEDE6;--sky:#D6E8FB;--lilac:#E6DDF8;--peach:#FDE3CF;--butter:#FFF0C2;--rose:#F9D5D5;
+}
+body{background:radial-gradient(circle at 88% 4%,#D9EEF7 0,transparent 38%),radial-gradient(circle at 4% 96%,#EBE2FA 0,transparent 42%),#EEF4F1}
+.top{background:transparent;border-bottom:none;padding-top:14px;padding-bottom:14px;height:auto}
+.top>.wm,.top nav{background:var(--surface);box-shadow:var(--clay-sm);border-radius:999px}
+.top>.wm{padding:8px 16px 8px 8px}
+.top nav{padding:10px 22px;gap:22px}
+.btn{border:none;background:var(--surface);box-shadow:var(--clay-sm);border-radius:14px;color:var(--ink)}
+.btn.p{background:linear-gradient(160deg,#17918A,#0F766E);box-shadow:8px 8px 18px rgba(15,118,110,.32),inset 2px 2px 4px rgba(255,255,255,.35),inset -3px -3px 6px rgba(0,0,0,.12);color:#fff}
+.pill{border:none;background:var(--surface);box-shadow:var(--clay-sm);height:40px;padding:0 16px}
+.pill.on{background:linear-gradient(160deg,#17918A,#0F766E);box-shadow:8px 8px 16px rgba(15,118,110,.3),inset 2px 2px 4px rgba(255,255,255,.3)}
+.pill.on .n{color:#D8F3EE}
+.tbl{border:none;border-radius:26px;box-shadow:var(--clay);background:var(--surface);padding:8px}
+.tbl .r{border-top:1px solid #F0F4F2;border-radius:16px;margin:2px 0;padding:0 16px}
+.tbl .r.h{background:transparent;border-top:0}
+.tbl .r.sel{background:var(--mint);box-shadow:var(--clay-press)}
+.chip{border-radius:999px;box-shadow:var(--clay-sm);padding:3px 11px;margin-right:6px}
+.chip.b{background:var(--rose)}.chip.q{background:var(--sky)}.chip.s{background:var(--mint)}.chip.h{background:var(--butter)}
+.search{border:none;background:var(--surface);box-shadow:var(--clay-press);border-radius:14px;width:280px;margin:4px}
+.seg{border-radius:20px!important;box-shadow:4px 6px 10px rgba(15,118,110,.14),inset 0 2px 3px rgba(255,255,255,.45)}
+.mood{gap:6px}
+.toggle i{box-shadow:var(--clay-press)}
+/* ---- colour and motion ---- */
+body{position:relative;overflow-x:hidden}
+body::before,body::after{content:"";position:fixed;z-index:-1;border-radius:50%;filter:blur(60px);opacity:.55;pointer-events:none}
+body::before{width:520px;height:520px;left:-140px;top:-120px;background:#BDE9DF;animation:drift1 22s ease-in-out infinite alternate}
+body::after{width:460px;height:460px;right:-120px;bottom:-140px;background:#D9CCF5;animation:drift2 26s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(120px,80px) scale(1.12)}}
+@keyframes drift2{to{transform:translate(-100px,-70px) scale(1.08)}}
+.seg{transform-origin:left center;animation:grow .9s cubic-bezier(.2,.8,.2,1) both}
+.mood .seg:nth-child(1){animation-delay:.05s}.mood .seg:nth-child(2){animation-delay:.15s}
+.mood .seg:nth-child(3){animation-delay:.25s}.mood .seg:nth-child(4){animation-delay:.35s}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.pill,.btn,.chip{transition:transform .2s ease,box-shadow .2s ease}
+.pill:hover,.btn:hover{transform:translateY(-2px);box-shadow:var(--clay)}
+.pill:active,.btn:active{transform:translateY(1px);box-shadow:var(--clay-press)}
+.pill.on:hover{box-shadow:10px 10px 20px rgba(15,118,110,.36),inset 2px 2px 4px rgba(255,255,255,.3)}
+.tbl .r{transition:background .2s ease,transform .2s ease}
+.tbl .r:not(.h):hover{background:#F2FAF8;transform:translateX(3px)}
+.draw{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.8s ease-out .6s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(15,118,110,.45)}50%{box-shadow:0 0 0 9px rgba(15,118,110,0)}}
+.bar-fill{transform-origin:left;animation:grow 1.2s cubic-bezier(.2,.8,.2,1) .3s both}
+.toggle i{transition:background .25s}
+.toggle:hover i{background:#A8D8CF}
+.h2{color:#0B4F4A}
+.chip.q{box-shadow:var(--clay-sm),0 0 0 1px rgba(59,111,212,.15)}
+.chip.s{box-shadow:var(--clay-sm),0 0 0 1px rgba(15,118,110,.15)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.draw{stroke-dashoffset:0}}
+/* ---- stronger colour pass ---- */
+:root{--surface:#FBFAFF}
+body{background:radial-gradient(circle at 92% 6%,#A9E4F5 0,transparent 36%),radial-gradient(circle at 2% 98%,#D4BFF7 0,transparent 40%),radial-gradient(circle at 60% 110%,#FFC9A8 0,transparent 34%),linear-gradient(160deg,#BDEBDD 0%,#D9ECF8 55%,#E9DDFA 100%)!important}
+body::before{opacity:.85;background:#7FD8C4}
+body::after{opacity:.8;background:#B8A2F0}
+.tbl{background:linear-gradient(180deg,#FFFFFF,#F4F0FF)}
+.tbl .r.h{color:#4B3F8A}
+.tbl .r:not(.h):hover{background:#E6FAF5}
+div[style*="box-shadow:var(--clay)"]{background:linear-gradient(180deg,#F1FBF8,#EEF4FF)!important}
+.search{background:#EAF7FF!important}
+.toggle i{background:#B9C7F0}
+.pill{background:#FFFFFF}
+.pill.t-positive{background:#CDF2E2}.pill.t-negative{background:#FAD4D2}.pill.t-neutral{background:#E4E8EE}
+.pill.t-questions{background:#D5E4FC}.pill.t-suggestions{background:#E8DDFB}.pill.t-bug{background:#FDE0C6}
+.pill.t-praise{background:#D8F5C9}.pill.t-duplicates{background:#FFF2C4}.pill.t-replies{background:#D4EEF9}
+.pill.t-spam{background:#F3D6EA}.pill.t-top{background:#FFE8D6}.pill.t-all.on{background:linear-gradient(160deg,#17918A,#0F766E)}
+.btn{background:#FFF1E4}
+.btn.p{background:linear-gradient(160deg,#1FA39A,#0F766E)}
+.top>.wm,.top nav{background:linear-gradient(90deg,#FFFFFF,#E8F8F4)}
+.seg{filter:saturate(1.15)}
+</style></head><body style="width:390px"><div class="top" style="padding:0 20px;height:56px"><div class="wm"><svg width="30" height="30" viewBox="0 0 120 120"><circle cx="52" cy="52" r="40" fill="#fff" stroke="#0F766E" stroke-width="10"/><line x1="82" y1="82" x2="108" y2="108" stroke="#0F766E" stroke-width="12" stroke-linecap="round"/><path d="M30 36h44a6 6 0 0 1 6 6v20a6 6 0 0 1-6 6H50l-12 10v-10h-8a6 6 0 0 1-6-6V42a6 6 0 0 1 6-6z" fill="#E4F1EF" stroke="#0F766E" stroke-width="3"/><circle cx="38" cy="52" r="4.5" fill="#2F8A5B"/><circle cx="52" cy="52" r="4.5" fill="#A3ABA8"/><circle cx="66" cy="52" r="4.5" fill="#C2453D"/></svg>CommentLens</div><span class="muted">Menu</span></div><div style="padding:24px 20px">
+<h1 style="font-size:26px;line-height:1.15">I rebuilt my editing setup for under $800</h1><div class="note" style="margin-top:8px">Studio Notes, 1,000 comments analyzed</div>
+<div style="display:flex;gap:16px;align-items:flex-end;margin-top:26px"><div class="tab" style="font-family:'Inter Display';font-size:68px;font-weight:650;letter-spacing:-.04em;line-height:.9">64</div><div><b>Mostly positive</b><div class="note">Mood score out of 100</div></div></div>
+<div class="mood" style="margin-top:20px"><div class="seg" style="flex:580;background:var(--pos);height:40px"></div><div class="seg" style="flex:140;background:var(--neu);height:40px"></div><div class="seg" style="flex:60;background:var(--mix);height:40px"></div><div class="seg" style="flex:220;background:var(--neg);height:40px"></div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:14px"><div class="seglab" style="margin:0"><span class="dot" style="background:var(--pos)"></span> <b style="display:inline">Positive</b> 580</div><div class="seglab" style="margin:0"><span class="dot" style="background:var(--neg)"></span> <b style="display:inline">Negative</b> 220</div><div class="seglab" style="margin:0"><span class="dot" style="background:var(--neu)"></span> <b style="display:inline">Neutral</b> 140</div><div class="seglab" style="margin:0"><span class="dot" style="background:var(--mix)"></span> <b style="display:inline">Mixed</b> 60</div></div>
+<div style="margin:26px -20px 0;padding:0 20px;overflow:hidden"><div style="display:flex;gap:8px;white-space:nowrap"><span class="pill t-all on">All <span class="n">1,000</span></span><span class="pill t-positive"><span class="dot" style="background:var(--pos)"></span>Positive <span class="n">580</span></span><span class="pill t-negative"><span class="dot" style="background:var(--neg)"></span>Negative <span class="n">220</span></span><span class="pill t-questions"><span class="dot" style="background:var(--ques)"></span>Questions <span class="n">134</span></span></div></div>
+<p style="margin-top:28px;font-size:15px;line-height:1.65">Most viewers liked the editing breakdown and the final result, and many call it the clearest guide they have watched. The main complaints are the slow first five minutes and audio that drops near 4:12. Viewers are asking for a part 2 on colour grading, and for Hindi subtitles.</p>
+<div class="h2" style="margin-top:30px">Comments</div>
+<div style="margin-top:12px"><div style="padding:16px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between"><b>@maya_k</b><span class="note tab">412 likes</span></div><p style="margin:6px 0 10px;font-size:15px">Best explanation of an editing setup I have seen. Thank you.</p><div style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:var(--pos)"></span><span class="note">Positive</span> <span class=chip s>Praise</span></div></div><div style="padding:16px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between"><b>@dev_arjun</b><span class="note tab">268 likes</span></div><p style="margin:6px 0 10px;font-size:15px">Will there be a part 2 covering colour grading?</p><div style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:var(--pos)"></span><span class="note">Positive</span> <span class=chip q>Question</span><span class=chip s>Suggestion</span></div></div><div style="padding:16px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between"><b>@sana.reads</b><span class="note tab">190 likes</span></div><p style="margin:6px 0 10px;font-size:15px">Subscribed after this video. Please keep going.</p><div style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:var(--pos)"></span><span class="note">Positive</span> <span class=chip s>Praise</span></div></div><div style="padding:16px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between"><b>@priya.s</b><span class="note tab">131 likes</span></div><p style="margin:6px 0 10px;font-size:15px">Which microphone did you use for the voiceover?</p><div style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:var(--neu)"></span><span class="note">Neutral</span> <span class=chip q>Question</span></div></div></div>
+<div style="margin:24px -20px 0;padding:14px 20px;background:var(--paper);border-top:1px solid var(--line);display:flex;gap:10px"><span class="btn" style="flex:1;justify-content:center">Ask the comments</span><span class="btn p" style="flex:1;justify-content:center">Download report</span></div></div></body></html>

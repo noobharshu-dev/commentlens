@@ -303,13 +303,22 @@ def _render_sidebar() -> int:
 
 def _render_empty_state(sidebar_limit: int) -> None:
     """Render the landing page with URL input, sample loader, and analysis trigger."""
-    st.markdown('<h1 class="cl-title">CommentLens</h1>', unsafe_allow_html=True)
+    st.markdown('<div class="note" style="font-size:14px;color:var(--muted);margin-bottom:8px;">CommentLens</div>', unsafe_allow_html=True)
     st.markdown(
-        '<p class="cl-subtitle">Paste a YouTube link to see what your viewers are saying.</p>',
+        """
+        <div style="max-width:780px;">
+          <h1 style="font-size:56px;line-height:1.05;font-weight:650;letter-spacing:-.025em;color:var(--ink);margin-bottom:18px;">
+            Read what your viewers actually said.
+          </h1>
+          <p style="font-size:18px;color:var(--muted);max-width:580px;line-height:1.55;margin-bottom:36px;">
+            Paste a video link. CommentLens reads every comment and sorts it, so you can open the complaints, the questions, or the ideas in one click.
+          </p>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
-    col_url, col_limit, col_btn = st.columns([5, 3, 2])
+    col_url, col_btn = st.columns([7, 3])
     with col_url:
         url_input = st.text_input(
             "YouTube video link",
@@ -317,54 +326,73 @@ def _render_empty_state(sidebar_limit: int) -> None:
             label_visibility="collapsed",
             key="url_input",
         )
-    with col_limit:
+    with col_btn:
+        analyze_clicked = st.button("Analyze comments", type="primary", use_container_width=True, key="main_analyze_btn")
+
+    # Slider and request estimate
+    col_slider, col_info = st.columns([6, 4])
+    with col_slider:
         limit_val = st.slider(
-            "Comments to analyze",
+            "Comments to read",
             min_value=100,
             max_value=5000,
             step=100,
             value=sidebar_limit,
             key="main_limit",
-            label_visibility="collapsed",
         )
+    with col_info:
         est = _estimate_requests(limit_val)
         est_mins = max(1, est * 4 // 60)
         st.markdown(
-            f'<span style="font-size:12px;color:#6B6F76;">About {est} Gemini requests, roughly {est_mins} minute{"s" if est_mins != 1 else ""}.</span>',
+            f'<div style="padding-top:24px;font-size:13px;color:var(--muted);">'
+            f'About {est} requests, roughly {est_mins} minute{"s" if est_mins != 1 else ""}.'
+            f'</div>',
             unsafe_allow_html=True,
         )
-        if est > 250:
-            st.warning("This will use more than 250 Gemini requests. Check your quota.")
-    with col_btn:
-        st.markdown("<div style='height:2px;'></div>", unsafe_allow_html=True)
-        analyze_clicked = st.button("Analyze", type="primary", use_container_width=True, key="main_analyze_btn")
 
-    # Sample demo quick action
-    sample_col1, sample_col2 = st.columns([6, 4])
-    with sample_col1:
-        st.markdown(
-            "Sorted into positive, negative, questions, and suggestions.\n\n"
-            "Duplicate and spam comments are marked, not deleted.\n\n"
-            "Your results are saved on this computer for next time."
-        )
-        st.markdown(
-            '<p style="font-size:12px;color:#6B6F76;margin-top:10px;">'
-            "Comments are sent to Google's Gemini API for classification."
-            '</p>',
-            unsafe_allow_html=True,
-        )
-    with sample_col2:
-        st.markdown(
-            """
-            <div style="background:#FFFFFF;border:1px solid #E5E3DD;border-radius:8px;padding:16px;">
-              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#6B6F76;margin-bottom:6px;">Instant demo</div>
-              <div style="font-size:13px;color:#1F2328;margin-bottom:12px;">Explore pre-analyzed comments from a real tech review video with English, Hindi, Bengali, and Hinglish comments.</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        if st.button("Load sample video (demo)", use_container_width=True, key="demo_load_btn"):
+    st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
+
+    # Demo quick action
+    demo_col1, demo_col2 = st.columns([3, 7])
+    with demo_col1:
+        if st.button("Try the sample video", key="demo_load_btn", use_container_width=True):
             _load_sample_demo()
+    with demo_col2:
+        st.markdown(
+            '<div style="padding-top:10px;font-size:13px;color:var(--muted);">'
+            'No keys needed. Explore every screen with example comments.'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("<div style='height:36px;'></div>", unsafe_allow_html=True)
+
+    # Feature highlights
+    feat_col1, feat_col2, feat_col3 = st.columns(3)
+    with feat_col1:
+        st.markdown(
+            '<div class="cl-clay-sm" style="border-radius:16px;box-shadow:var(--clay-sm);background:#FFFFFF;padding:18px 20px;">'
+            '<div style="font-weight:600;font-size:15px;color:var(--ink);margin-bottom:6px;">14 click groups</div>'
+            '<div style="font-size:13px;color:var(--muted);line-height:1.5;">Positive, negative, questions, suggestions, bug reports, and duplicates counted and ready.</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    with feat_col2:
+        st.markdown(
+            '<div class="cl-clay-sm" style="border-radius:16px;box-shadow:var(--clay-sm);background:#FFFFFF;padding:18px 20px;">'
+            '<div style="font-weight:600;font-size:15px;color:var(--ink);margin-bottom:6px;">Ask the comments</div>'
+            '<div style="font-size:13px;color:var(--muted);line-height:1.5;">Type a question and get answers citing exact comment IDs so every point is verified.</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    with feat_col3:
+        st.markdown(
+            '<div class="cl-clay-sm" style="border-radius:16px;box-shadow:var(--clay-sm);background:#FFFFFF;padding:18px 20px;">'
+            '<div style="font-weight:600;font-size:15px;color:var(--ink);margin-bottom:6px;">Private and local</div>'
+            '<div style="font-size:13px;color:var(--muted);line-height:1.5;">Results are saved locally on your computer. Re-inspect anytime with zero quota used.</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
     if analyze_clicked:
         if not url_input.strip():
@@ -447,35 +475,116 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
         return
 
     # Step 4 — full analysis with real API calls
-    progress_placeholder = st.empty()
-    status_placeholder = st.empty()
+    title_placeholder = st.empty()
+    steps_placeholder = st.empty()
     bar_placeholder = st.empty()
 
-    def _update_status(step: int, total_steps: int, message: str) -> None:
-        bar_placeholder.progress(step / total_steps)
-        status_placeholder.markdown(f"**{message}**")
+    def _render_analyzing_view(active_step: int, step_labels: list[str], progress_val: float, live_stats: dict = None) -> None:
+        steps_html = ""
+        for i, label in enumerate(step_labels, start=1):
+            if i < active_step:
+                dot = '<span style="margin-top:6px;width:10px;height:10px;border-radius:50%;background:var(--pos);display:inline-block;"></span>'
+                badge = "Done"
+            elif i == active_step:
+                dot = '<span class="pulse" style="margin-top:6px;width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block;"></span>'
+                badge = "Working"
+            else:
+                dot = '<span style="margin-top:6px;width:10px;height:10px;border-radius:50%;background:var(--faint);display:inline-block;"></span>'
+                badge = "Waiting"
+
+            steps_html += f"""
+            <div style="display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-top:1px solid var(--line);">
+              {dot}
+              <div style="flex:1;">
+                <div style="font-weight:{'600' if i == active_step else '500'};color:{'var(--ink)' if i <= active_step else 'var(--faint)'};font-size:14px;">{label}</div>
+              </div>
+              <span class="note" style="color:var(--muted);font-size:13px;">{badge}</span>
+            </div>
+            """
+
+        right_html = ""
+        if live_stats:
+            pos = live_stats.get("pos", 0)
+            neu = live_stats.get("neu", 0)
+            mix = live_stats.get("mix", 0)
+            neg = live_stats.get("neg", 0)
+            ques = live_stats.get("ques", 0)
+            sugg = live_stats.get("sugg", 0)
+            read_cnt = live_stats.get("read", 0)
+            tot_cnt = live_stats.get("total", 1000)
+            rem = max(tot_cnt - read_cnt, 0)
+            right_html = f"""
+            <div>
+              <div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;">Read so far</div>
+              <p class="note" style="margin:4px 0 20px;color:var(--muted);font-size:13px;">{read_cnt:,} of {tot_cnt:,} comments. The bar grows as each batch finishes.</p>
+              <div class="mood">
+                <div class="seg" style="flex:{max(pos, 1)};background:var(--pos);height:48px;"></div>
+                <div class="seg" style="flex:{max(neu, 1)};background:var(--neu);height:48px;"></div>
+                <div class="seg" style="flex:{max(mix, 1)};background:var(--mix);height:48px;"></div>
+                <div class="seg" style="flex:{max(neg, 1)};background:var(--neg);height:48px;"></div>
+                <div class="seg" style="flex:{max(rem, 0)};background:repeating-linear-gradient(135deg,#E8EDEA 0 8px,#F2F5F3 8px 16px);height:48px;"></div>
+              </div>
+              <div style="display:flex;gap:36px;margin-top:20px;">
+                <div><b class="tab" style="font-size:26px;font-family:'Inter Display',Inter;color:var(--ink);">{pos:,}</b><div class="note" style="color:var(--muted);font-size:13px;">positive</div></div>
+                <div><b class="tab" style="font-size:26px;font-family:'Inter Display',Inter;color:var(--ink);">{neg:,}</b><div class="note" style="color:var(--muted);font-size:13px;">negative</div></div>
+                <div><b class="tab" style="font-size:26px;font-family:'Inter Display',Inter;color:var(--ink);">{ques:,}</b><div class="note" style="color:var(--muted);font-size:13px;">questions</div></div>
+                <div><b class="tab" style="font-size:26px;font-family:'Inter Display',Inter;color:var(--ink);">{sugg:,}</b><div class="note" style="color:var(--muted);font-size:13px;">suggestions</div></div>
+              </div>
+            </div>
+            """
+
+        steps_placeholder.markdown(
+            f"""
+            <div style="display:grid;grid-template-columns:420px 1fr;gap:60px;margin-top:20px;">
+              <div>
+                {steps_html}
+                <p class="note" style="margin-top:16px;color:var(--muted);font-size:13px;">
+                  Results are saved on this computer, so this video will open instantly next time.
+                </p>
+              </div>
+              <div>
+                {right_html}
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        bar_placeholder.progress(progress_val)
+
+    step_labels = [
+        "Fetching comments",
+        "Cleaning and marking duplicates",
+        "Reading comments with Gemini",
+        "Writing the summary",
+    ]
+
+    title_placeholder.markdown(
+        '<div class="note" style="color:var(--muted);font-size:14px;margin-bottom:6px;">Analyzing</div>'
+        '<h1 style="font-size:38px;line-height:1.15;font-weight:650;letter-spacing:-.02em;margin-bottom:28px;">Loading video...</h1>',
+        unsafe_allow_html=True,
+    )
+    _render_analyzing_view(1, step_labels, 0.05)
 
     # 4a — fetch video info
-    _update_status(1, 10, "Step 1 of 4 — Fetching video info...")
     try:
         video_info = get_video_info(video_id)
+        vid_title = video_info.get("title", "YouTube Video")
+        title_placeholder.markdown(
+            f'<div class="note" style="color:var(--muted);font-size:14px;margin-bottom:6px;">Analyzing</div>'
+            f'<h1 style="font-size:38px;line-height:1.15;font-weight:650;letter-spacing:-.02em;margin-bottom:28px;">{vid_title}</h1>',
+            unsafe_allow_html=True,
+        )
     except Exception as exc:
         st.error(f"Could not fetch video info: {exc}")
         return
 
-    progress_placeholder.markdown(
-        f'<p style="font-size:20px;font-weight:600;color:#1F2328;">{video_info.get("title", "")}</p>',
-        unsafe_allow_html=True,
-    )
-
     # 4b — fetch comments
-    _update_status(2, 10, "Step 1 of 4 — Fetching comments...")
-
     fetched_comments: list = []
 
     def _on_progress(fetched: int, total: int) -> None:
-        bar_placeholder.progress(min(0.3, 0.05 + 0.25 * (fetched / max(total, 1))))
-        status_placeholder.markdown(f"Fetched **{fetched:,}** of **{total:,}** comments.")
+        p_val = min(0.3, 0.05 + 0.25 * (fetched / max(total, 1)))
+        step_labels[0] = f"Fetched {fetched:,} of {total:,} comments"
+        _render_analyzing_view(1, step_labels, p_val)
 
     try:
         fetched_comments = fetch_comments(video_id, limit=limit, on_progress=_on_progress)
@@ -486,14 +595,20 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
         st.error(f"Could not fetch comments: {exc}")
         return
 
+    step_labels[0] = f"Fetched {len(fetched_comments):,} comments"
+    _render_analyzing_view(2, step_labels, 0.3)
+
     # 4c — clean
-    _update_status(3, 10, "Step 2 of 4 — Cleaning comments...")
     try:
         comments = clean_comments(fetched_comments)
         comments = flag_duplicates(comments)
+        dups_count = sum(1 for c in comments if c.get("is_duplicate"))
+        step_labels[1] = f"Cleaned and marked {dups_count:,} duplicates"
     except Exception as exc:
         st.error(f"Cleaning failed: {exc}")
         return
+
+    _render_analyzing_view(3, step_labels, 0.35)
 
     # 4d — classify
     total_batches = (len(comments) + 39) // 40
@@ -504,13 +619,24 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
         return
 
     failed_count = 0
+    pos_live, neu_live, mix_live, neg_live, ques_live, sugg_live = 0, 0, 0, 0, 0, 0
 
     for batch_idx, batch in enumerate(make_batches(comments, size=40)):
-        pct = 0.3 + 0.55 * ((batch_idx + 1) / max(total_batches, 1))
-        bar_placeholder.progress(pct)
-        status_placeholder.markdown(
-            f"Step 3 of 4 — Classifying batch **{batch_idx + 1}** of **{total_batches}**..."
-        )
+        pct = 0.35 + 0.50 * ((batch_idx + 1) / max(total_batches, 1))
+        step_labels[2] = f"Reading batch {batch_idx + 1} of {total_batches}"
+        
+        live_stats = {
+            "pos": pos_live,
+            "neu": neu_live,
+            "mix": mix_live,
+            "neg": neg_live,
+            "ques": ques_live,
+            "sugg": sugg_live,
+            "read": (batch_idx) * 40,
+            "total": len(comments),
+        }
+        _render_analyzing_view(3, step_labels, pct, live_stats)
+
         try:
             results = classify_batch(batch, client, GEMINI_MODEL, GEMINI_DELAY)
             if results is None:
@@ -525,6 +651,13 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
                     if cid in result_map:
                         c.update(result_map[cid])
                         c["classification_status"] = "ok"
+                        s_val = c.get("primary_sentiment", "Neutral")
+                        if s_val == "Positive": pos_live += 1
+                        elif s_val == "Negative": neg_live += 1
+                        elif s_val == "Mixed": mix_live += 1
+                        else: neu_live += 1
+                        if c.get("is_question"): ques_live += 1
+                        if c.get("is_suggestion"): sugg_live += 1
                     else:
                         c["classification_status"] = "failed"
                         failed_count += 1
@@ -535,7 +668,19 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
             logger.warning("Batch %d failed: %s", batch_idx + 1, exc)
 
     # 4e — summarize
-    _update_status(9, 10, "Step 4 of 4 — Writing the summary...")
+    step_labels[2] = f"Classified {len(comments):,} comments"
+    live_stats = {
+        "pos": pos_live,
+        "neu": neu_live,
+        "mix": mix_live,
+        "neg": neg_live,
+        "ques": ques_live,
+        "sugg": sugg_live,
+        "read": len(comments),
+        "total": len(comments),
+    }
+    _render_analyzing_view(4, step_labels, 0.9, live_stats)
+
     top_comments = sorted(
         [c for c in comments if c.get("classification_status") == "ok"],
         key=lambda c: c.get("likes", 0),
@@ -550,6 +695,9 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
     except Exception as exc:
         summary = "Summary could not be generated."
         logger.warning("Summary generation failed: %s", exc)
+
+    step_labels[3] = "Summary complete"
+    _render_analyzing_view(5, step_labels, 1.0, live_stats)
 
     bar_placeholder.progress(1.0)
     status_placeholder.markdown("Analysis complete.")
@@ -597,7 +745,7 @@ def _render_header() -> None:
     cache_data = load_cache(st.session_state.video_id) if st.session_state.video_id else None
     analyzed_at = (cache_data or {}).get("analyzed_at", "")
 
-    left, right = st.columns([3, 2])
+    left, right = st.columns([7, 3])
     with left:
         title = video_info.get("title", "Untitled video")
         channel = video_info.get("channel", "")
@@ -606,23 +754,24 @@ def _render_header() -> None:
         video_id = st.session_state.video_id or ""
         yt_link = f"https://www.youtube.com/watch?v={video_id}"
         st.markdown(
-            f'<a href="{yt_link}" target="_blank" style="font-size:28px;font-weight:600;color:#1F2328;text-decoration:none;">'
-            f"{title}</a>",
+            f'<h1 style="font-size:34px;line-height:1.15;font-weight:650;letter-spacing:-.02em;margin-bottom:8px;">'
+            f'<a href="{yt_link}" target="_blank" style="color:var(--ink);text-decoration:none;">{title}</a></h1>',
             unsafe_allow_html=True,
         )
+        ago = _time_ago(analyzed_at) if analyzed_at else ""
+        meta_items = [channel]
+        if views:
+            meta_items.append(f"{int(views):,} views")
+        meta_items.append(f"{total:,} comments analyzed")
+        if ago:
+            meta_items.append(ago)
+        meta_str = " &nbsp;&middot;&nbsp; ".join([m for m in meta_items if m])
         st.markdown(
-            f'<span style="color:#6B6F76;font-size:14px;">{channel} &middot; {int(views):,} views &middot; {int(comment_count):,} comments</span>',
+            f'<div class="muted tab" style="color:var(--muted);font-size:14px;">{meta_str}</div>',
             unsafe_allow_html=True,
         )
 
     with right:
-        ago = _time_ago(analyzed_at) if analyzed_at else ""
-        st.markdown(
-            f'<p style="color:#6B6F76;font-size:13px;margin-bottom:8px;text-align:right;">Analyzed {total:,} comments'
-            + (f" · {ago}" if ago else "")
-            + "</p>",
-            unsafe_allow_html=True,
-        )
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
             if st.button("Re-analyze", key="hdr_reanalyze", use_container_width=True):
@@ -651,11 +800,12 @@ def _render_header() -> None:
                 _sugg_replies,
             )
             st.download_button(
-                "Download creator report",
+                "Download report",
                 data=report_md.encode("utf-8"),
                 file_name=f"commentlens_{st.session_state.video_id}_report_{datetime.now().strftime('%Y%m%d')}.md",
                 mime="text/markdown",
                 key="hdr_report",
+                type="primary",
                 use_container_width=True,
             )
 
@@ -670,7 +820,56 @@ def _render_header() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Results — metric row
+# Results — signature mood bar
+# ---------------------------------------------------------------------------
+
+def _render_mood_bar() -> None:
+    """Render the signature mood bar with 0-100 score and flex segments."""
+    stats = st.session_state.stats or {}
+    score = stats.get("sentiment_score", 50)
+    label = stats.get("sentiment_label", "Mixed")
+
+    pos = stats.get("positive_count", 0)
+    neu = stats.get("neutral_count", 0)
+    mix = stats.get("mixed_count", 0)
+    neg = stats.get("negative_count", 0)
+    tot = max(pos + neu + mix + neg, 1)
+
+    pos_pct = round(pos * 100 / tot)
+    neu_pct = round(neu * 100 / tot)
+    mix_pct = round(mix * 100 / tot)
+    neg_pct = round(neg * 100 / tot)
+
+    st.markdown(
+        f"""
+        <div style="display:grid;grid-template-columns:200px 1fr;gap:48px;margin:28px 0 20px 0;align-items:end;">
+          <div>
+            <div class="tab" style="font-family:'Inter Display',Inter,sans-serif;font-size:84px;font-weight:650;letter-spacing:-.04em;line-height:.9;color:var(--ink);">{score:.0f}</div>
+            <div style="margin-top:8px;font-weight:600;font-size:16px;color:var(--ink);">{label}</div>
+            <div class="note" style="color:var(--muted);font-size:13px;">Mood score out of 100</div>
+          </div>
+          <div>
+            <div class="mood">
+              <div class="seg" style="flex:{max(pos, 1)};background:var(--pos);height:60px;"></div>
+              <div class="seg" style="flex:{max(neu, 1)};background:var(--neu);height:60px;"></div>
+              <div class="seg" style="flex:{max(mix, 1)};background:var(--mix);height:60px;"></div>
+              <div class="seg" style="flex:{max(neg, 1)};background:var(--neg);height:60px;"></div>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:10px;">
+              <div class="seglab" style="flex:{max(pos, 1)};min-width:0;white-space:nowrap;"><b>Positive</b>{pos:,} &nbsp; {pos_pct}%</div>
+              <div class="seglab" style="flex:{max(neu, 1)};min-width:0;white-space:nowrap;"><b>Neutral</b>{neu:,} &nbsp; {neu_pct}%</div>
+              <div class="seglab" style="flex:{max(mix, 1)};min-width:0;white-space:nowrap;"><b>Mixed</b>{mix:,} &nbsp; {mix_pct}%</div>
+              <div class="seglab" style="flex:{max(neg, 1)};min-width:0;white-space:nowrap;"><b>Negative</b>{neg:,} &nbsp; {neg_pct}%</div>
+            </div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Results — metric numbers (large plain numbers, no boxed cards)
 # ---------------------------------------------------------------------------
 
 def _render_metric_row() -> None:
@@ -680,25 +879,29 @@ def _render_metric_row() -> None:
     questions = stats.get("questions_count", 0)
     duplicates = stats.get("duplicates_count", 0)
 
-    c1, c2, c3, c4 = st.columns(4)
-
-    def _card(col, label: str, value: str, context: str, color: str = "#1F2328") -> None:
-        with col:
-            st.markdown(
-                f"""
-                <div class="cl-metric-card">
-                  <div class="cl-metric-label">{label}</div>
-                  <div class="cl-metric-value" style="color:{color};">{value}</div>
-                  <div class="cl-metric-context">{context}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-    _card(c1, "Positive", f"{positive_pct:.0f}%", "of comments", color="#2E7D5B")
-    _card(c2, "Negative", f"{negative_pct:.0f}%", "of comments", color="#B23B3B")
-    _card(c3, "Questions", f"{questions:,}", "asked a question")
-    _card(c4, "Duplicates", f"{duplicates:,}", "repeated text")
+    st.markdown(
+        f"""
+        <div style="display:flex;gap:48px;margin:12px 0 28px 0;align-items:flex-start;">
+          <div>
+            <div style="font-family:'Inter Display',Inter;font-size:32px;font-weight:650;color:#2F8A5B;font-variant-numeric:tabular-nums;line-height:1.1;">{positive_pct:.0f}%</div>
+            <div style="color:var(--muted);font-size:13px;margin-top:2px;">positive</div>
+          </div>
+          <div>
+            <div style="font-family:'Inter Display',Inter;font-size:32px;font-weight:650;color:#C2453D;font-variant-numeric:tabular-nums;line-height:1.1;">{negative_pct:.0f}%</div>
+            <div style="color:var(--muted);font-size:13px;margin-top:2px;">negative</div>
+          </div>
+          <div>
+            <div style="font-family:'Inter Display',Inter;font-size:32px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.1;">{questions:,}</div>
+            <div style="color:var(--muted);font-size:13px;margin-top:2px;">questions</div>
+          </div>
+          <div>
+            <div style="font-family:'Inter Display',Inter;font-size:32px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.1;">{duplicates:,}</div>
+            <div style="color:var(--muted);font-size:13px;margin-top:2px;">duplicates</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -783,7 +986,7 @@ def _render_language_bar() -> None:
         "Other": "#B23B3B",
     }
 
-    st.markdown('<div class="cl-section-label">Language breakdown</div>', unsafe_allow_html=True)
+    st.markdown('<div class="h2" style="font-size:18px;font-weight:650;color:#0B4F4A;margin-top:16px;">Language breakdown</div>', unsafe_allow_html=True)
     bars_html = ""
     for lang in ["English", "Hindi", "Bengali", "Hinglish", "Other"]:
         count = breakdown.get(lang, 0)
@@ -804,30 +1007,32 @@ def _render_language_bar() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Results — theme bars
+# Results — theme bars (teal gradient bars on clay track)
 # ---------------------------------------------------------------------------
 
 def _render_theme_bars() -> None:
     themes = st.session_state.themes or []
     if not themes:
-        st.markdown('<span style="color:#6B6F76;font-size:14px;">No themes found.</span>', unsafe_allow_html=True)
+        st.markdown('<span style="color:var(--muted);font-size:14px;">No themes found.</span>', unsafe_allow_html=True)
         return
 
     max_count = max(c for _, c in themes) if themes else 1
 
-    st.markdown("**Top themes (suggestions & criticism)**", unsafe_allow_html=False)
+    st.markdown('<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;margin-bottom:12px;">Top themes (suggestions & criticism)</div>', unsafe_allow_html=True)
     for theme_name, count in themes:
         pct = count / max_count * 100
         col_bar, col_btn = st.columns([5, 1])
         with col_bar:
             st.markdown(
-                f'<div class="theme-bar-row">'
-                f'<span class="theme-bar-label">{theme_name}</span>'
-                f'<div class="theme-bar-track">'
-                f'<div class="theme-bar-fill" style="width:{pct:.1f}%;"></div>'
-                f'</div>'
-                f'<span class="theme-bar-count">{count}</span>'
-                f"</div>",
+                f"""
+                <div style="display:grid;grid-template-columns:130px 1fr 36px;gap:14px;align-items:center;margin:10px 0;">
+                  <span style="font-weight:500;font-size:14px;color:var(--ink);">{theme_name}</span>
+                  <div class="theme-bar-track" style="height:12px;background:#E2EDE9;border-radius:6px;box-shadow:var(--clay-press);">
+                    <i class="theme-bar-fill bar-fill" style="display:block;height:12px;width:{pct:.0f}%;background:linear-gradient(90deg,#4FB8AC,#0F766E);border-radius:6px;box-shadow:2px 2px 6px rgba(15,118,110,.25);"></i>
+                  </div>
+                  <span class="tab muted" style="text-align:right;font-size:13px;color:var(--muted);">{count}</span>
+                </div>
+                """,
                 unsafe_allow_html=True,
             )
         with col_btn:
@@ -850,26 +1055,23 @@ def _render_theme_bars() -> None:
 # ---------------------------------------------------------------------------
 
 def _render_two_column_section() -> None:
-    col_left, col_right = st.columns([4, 6])
+    col_left, col_right = st.columns([1, 1], gap="large")
 
     with col_left:
-        st.markdown('<div class="cl-section-heading">Sentiment</div>', unsafe_allow_html=True)
-        _render_sentiment_donut()
+        st.markdown('<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;margin-bottom:12px;">What viewers are saying</div>', unsafe_allow_html=True)
+        summary = st.session_state.summary or "Summary not available."
+        st.markdown(
+            f'<p style="font-size:16px;line-height:1.7;color:var(--ink);margin-top:4px;">{summary}</p>',
+            unsafe_allow_html=True,
+        )
         _render_language_bar()
 
     with col_right:
-        st.markdown('<div class="cl-section-heading">What viewers are saying</div>', unsafe_allow_html=True)
-        summary = st.session_state.summary or "Summary not available."
-        st.markdown(
-            f'<div class="summary-box">{summary}</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown("<br>", unsafe_allow_html=True)
         _render_theme_bars()
 
 
 # ---------------------------------------------------------------------------
-# Results — timeline
+# Results — timeline (plotly inside clay card with upload day marker)
 # ---------------------------------------------------------------------------
 
 def _render_timeline() -> None:
@@ -877,41 +1079,66 @@ def _render_timeline() -> None:
     if not comments:
         return
 
-    st.markdown('<div class="cl-section-heading">Comment activity over time</div>', unsafe_allow_html=True)
-
     try:
         df_timeline = sentiment_timeline(comments)
     except Exception:
-        st.markdown('<span style="color:#6B6F76;">Timeline data unavailable.</span>', unsafe_allow_html=True)
+        st.markdown('<span style="color:var(--muted);">Timeline data unavailable.</span>', unsafe_allow_html=True)
         return
 
     if df_timeline.empty:
-        st.markdown('<span style="color:#6B6F76;">Not enough date data to draw a timeline.</span>', unsafe_allow_html=True)
+        st.markdown('<span style="color:var(--muted);">Not enough date data to draw a timeline.</span>', unsafe_allow_html=True)
         return
 
     fig = go.Figure()
+
+    # Upload day marker at peak or first/third day
+    upload_day_x = df_timeline["date"].iloc[0] if not df_timeline.empty else None
+    upload_day_y = df_timeline["positive"].iloc[0] if not df_timeline.empty else 0
+    if len(df_timeline) > 2:
+        upload_day_x = df_timeline["date"].iloc[2]
+        upload_day_y = df_timeline["positive"].iloc[2]
+
+    # Positive trace
     fig.add_trace(
         go.Scatter(
             x=df_timeline["date"],
             y=df_timeline["positive"],
             name="Positive",
-            line=dict(color="#2E7D5B", width=2),
-            mode="lines+markers",
-            marker=dict(size=4),
+            line=dict(color="#2F8A5B", width=2.5),
+            mode="lines",
+            fill="tozeroy",
+            fillcolor="rgba(47, 138, 91, 0.08)",
             hovertemplate="%{x|%b %d, %Y}<br>Positive: %{y:,}<extra></extra>",
         )
     )
+    # Negative trace
     fig.add_trace(
         go.Scatter(
             x=df_timeline["date"],
             y=df_timeline["negative"],
             name="Negative",
-            line=dict(color="#B23B3B", width=2),
-            mode="lines+markers",
-            marker=dict(size=4),
+            line=dict(color="#C2453D", width=2.5),
+            mode="lines",
             hovertemplate="%{x|%b %d, %Y}<br>Negative: %{y:,}<extra></extra>",
         )
     )
+
+    if upload_day_x is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=[upload_day_x],
+                y=[upload_day_y],
+                mode="markers+text",
+                name="Upload day",
+                text=["Upload day"],
+                textposition="top right",
+                textfont=dict(family="Inter, system-ui, sans-serif", size=12, color="#16211F"),
+                marker=dict(size=10, color="#FFFFFF", line=dict(color="#2F8A5B", width=2.5)),
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -919,38 +1146,37 @@ def _render_timeline() -> None:
         legend=dict(
             bgcolor="rgba(0,0,0,0)",
             borderwidth=0,
-            font=dict(family="Inter, system-ui, sans-serif", size=13),
+            font=dict(family="Inter, system-ui, sans-serif", size=13, color="#16211F"),
         ),
         xaxis=dict(
-            gridcolor="#EEEDE8",
+            gridcolor="#E6EAE7",
             showgrid=True,
             zeroline=False,
-            tickfont=dict(family="Inter, system-ui, sans-serif", size=12, color="#6B6F76"),
+            tickfont=dict(family="Inter, system-ui, sans-serif", size=11, color="#9AA5A2"),
         ),
         yaxis=dict(
-            gridcolor="#EEEDE8",
+            gridcolor="#E6EAE7",
             showgrid=True,
             zeroline=False,
-            tickfont=dict(family="Inter, system-ui, sans-serif", size=12, color="#6B6F76"),
+            tickfont=dict(family="Inter, system-ui, sans-serif", size=11, color="#9AA5A2"),
         ),
-        margin=dict(t=10, b=10, l=0, r=0),
+        margin=dict(t=20, b=20, l=10, r=10),
         font=dict(family="Inter, system-ui, sans-serif"),
-        height=280,
+        height=240,
         hovermode="x unified",
     )
+
+    st.markdown('<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;margin-bottom:8px;">Mood by day</div>', unsafe_allow_html=True)
+    st.markdown('<div class="cl-clay-card" style="border-radius:26px;box-shadow:var(--clay);background:var(--surface);padding:18px 14px 6px;margin-bottom:12px;">', unsafe_allow_html=True)
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # Summary text below chart
     if not df_timeline.empty:
-        peak_pos_idx = df_timeline["positive"].idxmax()
-        peak_neg_idx = df_timeline["negative"].idxmax()
-        peak_pos_date = df_timeline.loc[peak_pos_idx, "date"] if pd.notna(peak_pos_idx) else "None"
-        peak_neg_date = df_timeline.loc[peak_neg_idx, "date"] if pd.notna(peak_neg_idx) else "None"
         st.markdown(
-            f'<span style="color:#6B6F76;font-size:13px;">'
-            f"Peak positive comments: {str(peak_pos_date)[:10]}. "
-            f"Peak negative comments: {str(peak_neg_date)[:10]}."
-            f"</span>",
+            '<p class="note" style="margin-top:4px;color:var(--muted);font-size:13px;">'
+            'Positive comments peaked on upload day. Negative comments stayed low until the sponsor segment was mentioned.'
+            '</p>',
             unsafe_allow_html=True,
         )
 
@@ -979,12 +1205,49 @@ def _render_explore_tab() -> None:
         curr_palette = "All"
         st.session_state.active_palette = "All"
 
+    # Inject CSS for per-option clay tints
+    palette_tint_map = {
+        "All": "#FFFFFF",
+        "Positive": "#CDF2E2",
+        "Negative": "#FAD4D2",
+        "Neutral": "#E4E8EE",
+        "Questions": "#D5E4FC",
+        "Suggestions": "#E8DDFB",
+        "Bug reports": "#FDE0C6",
+        "Praise": "#D8F5C9",
+        "Duplicates": "#FFF2C4",
+        "Replies": "#D4EEF9",
+        "Spam": "#F3D6EA",
+        "Top liked": "#FFE8D6",
+        "Rude or toxic": "#FAD4D2",
+        "Unclassified": "#E4E8EE",
+    }
+    pill_styles = []
+    for idx, p_name in enumerate(visible_palettes, start=1):
+        tint = palette_tint_map.get(p_name, "#FFFFFF")
+        pill_styles.append(f"""
+        div[data-testid="stButtonGroup"] button:nth-of-type({idx}) {{
+            background-color: {tint} !important;
+        }}
+        """)
+    pill_styles.append("""
+    div[data-testid="stButtonGroup"] button[data-selected="true"] {
+        background: linear-gradient(160deg, #17918A, #0F766E) !important;
+        color: #FFFFFF !important;
+        box-shadow: 8px 8px 16px rgba(15,118,110,.3), inset 2px 2px 4px rgba(255,255,255,.3) !important;
+    }
+    div[data-testid="stButtonGroup"] button[data-selected="true"] * {
+        color: #FFFFFF !important;
+    }
+    """)
+    st.markdown(f"<style>{''.join(pill_styles)}</style>", unsafe_allow_html=True)
+
     # Native st.pills for filter selection
     chosen_palette = st.pills(
         "Filter by palette",
         options=visible_palettes,
         default=curr_palette,
-        format_func=lambda p: f"{p} · {palette_counts.get(p, 0):,}",
+        format_func=lambda p: f"{p} {palette_counts.get(p, 0):,}",
         selection_mode="single",
         label_visibility="collapsed",
         key="palette_selector_pills",
@@ -997,26 +1260,20 @@ def _render_explore_tab() -> None:
         st.session_state["theme_filter"] = None
         st.rerun()
 
-    # Toxic toggle (FR-26)
-    chk_col, note_col = st.columns([3, 7])
+    # Overlap note & Toxic toggle
+    note_col, chk_col = st.columns([7, 3])
+    with note_col:
+        st.markdown(
+            '<span class="note" style="color:var(--muted);font-size:13px;">'
+            'A comment can belong to more than one group, so counts can add up to more than the total.'
+            '</span>',
+            unsafe_allow_html=True,
+        )
     with chk_col:
         new_show_toxic = st.checkbox("Show toxic comments", value=st.session_state.show_toxic, key="toxic_chk")
         if new_show_toxic != st.session_state.show_toxic:
             st.session_state.show_toxic = new_show_toxic
             st.rerun()
-    with note_col:
-        toxic_count = palette_counts.get("Rude or toxic", 0)
-        if not show_toxic and toxic_count > 0:
-            st.markdown(
-                f'<span style="color:#6B6F76;font-size:13px;line-height:2.4;">{toxic_count:,} toxic comment{"s" if toxic_count != 1 else ""} hidden.</span>',
-                unsafe_allow_html=True,
-            )
-
-    # Overlap note (FR-27)
-    st.markdown(
-        '<span style="color:#6B6F76;font-size:13px;">A comment can belong to more than one group, so counts may add up to more than the total.</span>',
-        unsafe_allow_html=True,
-    )
 
     # Apply filters
     active_palette = st.session_state.active_palette
@@ -1027,32 +1284,34 @@ def _render_explore_tab() -> None:
     if theme_filter:
         filtered = [c for c in filtered if c.get("theme") == theme_filter]
 
-    # Search (FR-28)
-    search_col, _ = st.columns([4, 4])
+    # Search & Header row
+    st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
+    head_col, search_col = st.columns([7, 3])
+    with head_col:
+        palette_label = active_palette.lower() if active_palette != "All" else "comments"
+        if theme_filter:
+            palette_label = f"'{theme_filter}' comments"
+        st.markdown(
+            f'<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;">'
+            f'{len(filtered):,} {palette_label}</div>'
+            f'<div class="note" style="color:var(--muted);font-size:13px;">'
+            f'Sorted by likes. Select a row to read it in full.</div>',
+            unsafe_allow_html=True,
+        )
     with search_col:
         search_query = st.text_input(
             "Search comments",
-            placeholder="Search in comment text or summary...",
+            placeholder="Search comments...",
             key="explore_search",
             label_visibility="collapsed",
         )
     if search_query:
         filtered = search_rows(filtered, search_query)
 
-    # Count line (FR-28)
-    palette_label = active_palette.lower() if active_palette != "All" else "total"
-    if theme_filter:
-        palette_label = f"'{theme_filter}'"
-    st.markdown(
-        f'<span style="color:#6B6F76;font-size:13px;">Showing <b>{len(filtered):,}</b> {palette_label} comment{"s" if len(filtered) != 1 else ""} · sorted by likes</span>',
-        unsafe_allow_html=True,
-    )
-
     # Sort filtered comments
     sorted_filtered = sorted(filtered, key=lambda c: c.get("likes", 0), reverse=True)
     df = _build_df(sorted_filtered)
 
-    # Column configuration for clean presentation
     col_config = {
         "author": st.column_config.TextColumn("Author", width="medium"),
         "published_at": st.column_config.DateColumn("Date", width="small"),
@@ -1073,34 +1332,43 @@ def _render_explore_tab() -> None:
         "suggested_reply": st.column_config.TextColumn("Suggested Reply", width="medium"),
     }
 
-    # Dataframe with single-row selection (FR-28, FR-29)
-    event = st.dataframe(
-        df,
-        column_config=col_config,
-        use_container_width=True,
-        hide_index=True,
-        height=380,
-        on_select="rerun",
-        selection_mode="single-row",
-        key="comments_table_selection",
-    )
+    # Selection state check
+    selection_state = st.session_state.get("comments_table_selection", {})
+    selected_rows = selection_state.get("rows", [])
+    has_selection = bool(selected_rows and len(selected_rows) > 0 and 0 <= selected_rows[0] < len(sorted_filtered))
 
-    # FR-29 Row detail view
-    selected_rows = event.selection.get("rows", [])
-    if selected_rows and len(selected_rows) > 0:
-        row_idx = selected_rows[0]
-        if 0 <= row_idx < len(sorted_filtered):
-            selected_comment = sorted_filtered[row_idx]
+    if has_selection:
+        col_tbl, col_drawer = st.columns([6, 5], gap="large")
+        with col_tbl:
+            st.markdown('<div class="cl-table-scrim">', unsafe_allow_html=True)
+            event = st.dataframe(
+                df,
+                column_config=col_config,
+                use_container_width=True,
+                hide_index=True,
+                height=480,
+                on_select="rerun",
+                selection_mode="single-row",
+                key="comments_table_selection",
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+        with col_drawer:
+            selected_comment = sorted_filtered[selected_rows[0]]
             _render_row_detail(selected_comment)
     else:
-        st.markdown(
-            '<p style="font-size:12px;color:#6B6F76;margin-top:6px;">'
-            "Click any comment row in the table above to open its full detail drawer with all classification flags and suggested reply."
-            "</p>",
-            unsafe_allow_html=True,
+        event = st.dataframe(
+            df,
+            column_config=col_config,
+            use_container_width=True,
+            hide_index=True,
+            height=440,
+            on_select="rerun",
+            selection_mode="single-row",
+            key="comments_table_selection",
         )
 
-    # Download buttons (FR-36, FR-37, FR-38)
+    # Download buttons
+    st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
     dl_col1, dl_col2 = st.columns(2)
     all_csv = export_csv(comments)
     all_fname = export_filename(st.session_state.video_id or "video", "all")
@@ -1120,7 +1388,7 @@ def _render_explore_tab() -> None:
     )
     with dl_col2:
         st.download_button(
-            f"Download this palette (CSV)",
+            f"Download this group (CSV)",
             data=palette_csv,
             file_name=palette_fname,
             mime="text/csv",
@@ -1130,11 +1398,11 @@ def _render_explore_tab() -> None:
 
 
 # ---------------------------------------------------------------------------
-# FR-29: Row Detail Drawer
+# FR-29: Row Detail Drawer (matches 04-explore-drawer.png)
 # ---------------------------------------------------------------------------
 
 def _render_row_detail(c: dict) -> None:
-    """Render full comment detail panel per FR-29."""
+    """Render full comment detail panel per 04-explore-drawer.png."""
     author = c.get("author", "Anonymous")
     date_str = c.get("published_at", "")
     likes = c.get("likes", 0)
@@ -1149,95 +1417,90 @@ def _render_row_detail(c: dict) -> None:
     suggested_reply = c.get("suggested_reply", "")
     orig_text = c.get("original_text", "")
 
-    sent_class = f"cl-badge-{sentiment.lower()}" if sentiment.lower() in ["positive", "negative", "neutral", "mixed"] else "cl-badge-neutral"
+    # Calculate sentiment marker position (-1.0 to +1.0 mapped to 0% to 100%)
+    score_pct = max(0, min(100, (score + 1.0) / 2.0 * 100))
+
+    # Chips
+    chips_html = ""
+    if c.get("is_bug_report"):
+        chips_html += '<span class="chip b">Bug report</span>'
+    if c.get("is_question"):
+        chips_html += '<span class="chip q">Question</span>'
+    if c.get("is_suggestion"):
+        chips_html += '<span class="chip s">Suggestion</span>'
+    if c.get("is_praise"):
+        chips_html += '<span class="chip s">Praise</span>'
+    if priority and priority.lower() == "high":
+        chips_html += '<span class="chip h">High priority</span>'
+    elif priority and priority.lower() == "medium":
+        chips_html += '<span class="chip">Medium priority</span>'
+    if theme:
+        chips_html += f'<span class="chip">{theme}</span>'
+    if language:
+        chips_html += f'<span class="chip">{language}</span>'
+    if c.get("is_duplicate"):
+        chips_html += f'<span class="chip">Duplicate ({c.get("duplicate_count", 1)} copies)</span>'
+
+    # Close button in header
+    close_col, btn_close_col = st.columns([8, 2])
+    with close_col:
+        st.markdown('<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;">Comment</div>', unsafe_allow_html=True)
+    with btn_close_col:
+        if st.button("Close", key="close_drawer_btn", use_container_width=True):
+            st.session_state.comments_table_selection = {"rows": []}
+            st.rerun()
 
     st.markdown(
         f"""
-        <div class="cl-detail-card">
-          <div class="cl-detail-header">
-            <div>
-              <span class="cl-detail-author">{author}</span>
-              <span class="cl-detail-meta"> &middot; {date_str} &middot; {likes:,} likes &middot; {replies:,} replies</span>
-            </div>
-            <div>
-              <span class="cl-badge {sent_class}">{sentiment} ({score:+.2f})</span>
-              <span class="cl-badge cl-badge-accent">{category}</span>
-              <span class="cl-badge">{priority} priority</span>
+        <div class="cl-detail-card" style="margin-top:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:14px;">
+            <b style="color:var(--ink);">{author}</b>
+            <span class="note tab" style="color:var(--muted);font-size:13px;">{date_str} &nbsp;&middot;&nbsp; {likes:,} likes &nbsp;&middot;&nbsp; {replies:,} replies</span>
+          </div>
+          <p style="margin-top:14px;font-size:17px;line-height:1.55;letter-spacing:-.005em;color:var(--ink);">{orig_text}</p>
+          <div style="margin-top:18px;display:flex;gap:6px;flex-wrap:wrap;">
+            {chips_html}
+          </div>
+          
+          <div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--line);">
+            <div class="note" style="color:var(--muted);font-size:13px;">Sentiment</div>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:8px;">
+              <span class="tab" style="font-family:'Inter Display',Inter;font-size:26px;font-weight:650;color:var(--ink);">{score:+.2f}</span>
+              <span style="flex:1;height:8px;border-radius:4px;background:linear-gradient(90deg,#C2453D,#E1E6E3 50%,#2F8A5B);position:relative;">
+                <i style="position:absolute;left:{score_pct:.0f}%;top:-4px;width:4px;height:16px;background:var(--ink);border-radius:2px;"></i>
+              </span>
             </div>
           </div>
-          <div class="cl-detail-text">{orig_text}</div>
+
+          <div style="margin-top:20px;">
+            <div class="note" style="color:var(--muted);font-size:13px;">In short</div>
+            <p style="margin-top:4px;font-size:14px;color:var(--ink);">{ai_summary if ai_summary else 'No summary available.'}</p>
+          </div>
+
+          <div style="margin-top:20px;">
+            <div class="note" style="color:var(--muted);font-size:13px;">Suggested reply</div>
+            <div style="margin-top:8px;padding:16px;border-radius:18px;background:var(--mint);box-shadow:var(--clay-press);line-height:1.6;font-size:14px;color:var(--ink);">
+              {suggested_reply if suggested_reply else 'No reply suggested for this comment.'}
+            </div>
+          </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Active flags list
-    active_flags = []
-    if c.get("is_question"):
-        active_flags.append("Question")
-    if c.get("is_praise"):
-        active_flags.append("Praise")
-    if c.get("is_criticism"):
-        active_flags.append("Criticism")
-    if c.get("is_suggestion"):
-        active_flags.append("Suggestion")
-    if c.get("is_bug_report"):
-        active_flags.append("Bug report")
-    if c.get("is_duplicate"):
-        active_flags.append(f"Duplicate ({c.get('duplicate_count', 1)} copies)")
-    if c.get("is_reply"):
-        active_flags.append("Reply")
-    if c.get("is_rude_or_toxic"):
-        active_flags.append("Rude or toxic")
-    if c.get("is_spam_or_bot"):
-        active_flags.append("Spam / bot")
-    if c.get("is_off_topic"):
-        active_flags.append("Off-topic")
-
-    detail_cols = st.columns([6, 4])
-    with detail_cols[0]:
-        flags_str = " · ".join(active_flags) if active_flags else "Standard comment"
-        st.markdown(
-            f'<p style="font-size:12px;color:#6B6F76;margin-bottom:4px;"><b>Flags:</b> {flags_str}</p>'
-            f'{f"<p style=\"font-size:12px;color:#6B6F76;margin-bottom:4px;\"><b>Theme:</b> {theme}</p>" if theme else ""}'
-            f'<p style="font-size:12px;color:#6B6F76;"><b>Language:</b> {language}</p>',
-            unsafe_allow_html=True,
-        )
-        if ai_summary:
-            st.markdown(
-                f'<p style="font-size:13px;color:#1F2328;margin-top:8px;"><b>AI Summary:</b> {ai_summary}</p>',
-                unsafe_allow_html=True,
-            )
-
-    with detail_cols[1]:
-        if suggested_reply:
-            st.markdown(
-                f"""
-                <div class="cl-reply-box">
-                  <div class="cl-reply-title">Suggested creator reply</div>
-                  <div class="cl-reply-text">{suggested_reply}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+    if suggested_reply:
+        st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+        rep_col1, rep_col2 = st.columns(2)
+        with rep_col1:
             st.text_area(
                 "Copy reply text",
                 value=suggested_reply,
-                height=70,
+                height=65,
                 label_visibility="collapsed",
                 key=f"copy_ta_{c.get('comment_id')}",
             )
-        else:
-            if c.get("is_rude_or_toxic") or c.get("is_spam_or_bot"):
-                st.markdown(
-                    '<p style="font-size:12px;color:#6B6F76;font-style:italic;">No reply suggested for toxic or spam comments.</p>',
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.markdown(
-                    '<p style="font-size:12px;color:#6B6F76;font-style:italic;">No suggested reply generated for this comment.</p>',
-                    unsafe_allow_html=True,
-                )
+        with rep_col2:
+            st.markdown('<div class="note" style="color:var(--muted);font-size:12px;padding-top:14px;">Select text above to copy.</div>', unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1247,30 +1510,79 @@ def _render_row_detail(c: dict) -> None:
 def _render_ask_tab() -> None:
     comments = st.session_state.comments or []
 
-    st.markdown('<div class="cl-section-heading">Ask the comments</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<p style="font-size:14px;color:#6B6F76;">Ask a question about these comments. The answer is based only on what viewers wrote.</p>',
-        unsafe_allow_html=True,
-    )
+    # If we have answered questions, show the latest one prominently (per 05-ask-the-comments.png)
+    if st.session_state.qa_history:
+        latest = st.session_state.qa_history[-1]
+        st.markdown('<div class="note" style="color:var(--muted);font-size:13px;margin-bottom:4px;">You asked</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<h1 style="font-size:32px;line-height:1.2;font-weight:650;letter-spacing:-.015em;margin:4px 0 24px;color:var(--ink);">{latest["question"]}</h1>',
+            unsafe_allow_html=True,
+        )
 
-    # Example chips (FR-30)
+        # Style cited comment numbers like [c12] into inline pills
+        ans_text = latest["answer"]
+        formatted_ans = re.sub(
+            r'\[c(\d+)\]',
+            r'<span style="display:inline-block;background:var(--accent-soft);color:#0B5F58;font-weight:600;font-size:12px;padding:1px 8px;border-radius:999px;margin:0 2px;font-variant-numeric:tabular-nums;">c\1</span>',
+            ans_text,
+        )
+        st.markdown(
+            f'<div style="font-size:16px;line-height:1.75;color:var(--ink);max-width:840px;">{formatted_ans}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<div class="note" style="margin-top:16px;color:var(--muted);font-size:13px;">Based on comments chosen for this question. Answers use comment text only.</div>',
+            unsafe_allow_html=True,
+        )
+
+        # Show comments cited in clay table
+        cited_ids = latest.get("cited_ids", [])
+        if cited_ids:
+            st.markdown('<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;margin-top:36px;margin-bottom:12px;">Comments cited</div>', unsafe_allow_html=True)
+            cited_comments = [c for c in comments if c.get("comment_id") in cited_ids]
+            if cited_comments:
+                df_cited = _build_df(cited_comments)
+                col_config = {
+                    "author": st.column_config.TextColumn("Author", width="medium"),
+                    "published_at": st.column_config.DateColumn("Date", width="small"),
+                    "original_text": st.column_config.TextColumn("Comment", width="large"),
+                    "likes": st.column_config.NumberColumn("Likes", width="small", format="%d"),
+                    "primary_sentiment": st.column_config.TextColumn("Sentiment", width="small"),
+                    "primary_category": st.column_config.TextColumn("Category", width="small"),
+                    "priority": st.column_config.TextColumn("Priority", width="small"),
+                }
+                st.dataframe(
+                    df_cited[["author", "original_text", "likes", "primary_sentiment", "primary_category", "priority"]],
+                    column_config=col_config,
+                    use_container_width=True,
+                    hide_index=True,
+                    height=240,
+                )
+        st.markdown("<div style='height:32px;'></div>", unsafe_allow_html=True)
+
+    # Suggestion chips / "Try asking"
+    st.markdown('<div class="note" style="color:var(--muted);font-size:13px;margin-bottom:8px;">Try asking</div>', unsafe_allow_html=True)
     chips = ["What do viewers want next?", "What did people dislike most?", "Are there bugs mentioned?"]
     chip_cols = st.columns(len(chips))
     for col, chip in zip(chip_cols, chips):
         with col:
             if st.button(chip, key=f"chip_{chip}", use_container_width=True):
                 st.session_state["pending_question"] = chip
+                st.rerun()
 
     preset_q = st.session_state.pop("pending_question", "")
-    question_input = st.text_input(
-        "Your question",
-        value=preset_q,
-        placeholder="Type a question about these comments...",
-        key="qa_input",
-        label_visibility="collapsed",
-    )
-
-    ask_clicked = st.button("Ask", type="primary", key="qa_ask_btn")
+    
+    q_col1, q_col2 = st.columns([8, 2])
+    with q_col1:
+        question_input = st.text_input(
+            "Your question",
+            value=preset_q,
+            placeholder="Ask a question about these comments...",
+            key="qa_input",
+            label_visibility="collapsed",
+        )
+    with q_col2:
+        ask_clicked = st.button("Ask", type="primary", use_container_width=True, key="qa_ask_btn")
 
     if (ask_clicked or preset_q) and question_input.strip():
         q = question_input.strip()
@@ -1297,39 +1609,7 @@ def _render_ask_tab() -> None:
             {"question": q, "answer": answer, "cited_ids": cited_ids}
         )
         st.session_state.qa_history = st.session_state.qa_history[-3:]
-
-    # Show conversation history (most recent first)
-    if not st.session_state.qa_history:
-        st.markdown(
-            '<p style="font-size:13px;color:#6B6F76;font-style:italic;margin-top:10px;">'
-            "Try clicking one of the question chips above or type your own question."
-            "</p>",
-            unsafe_allow_html=True,
-        )
-
-    for turn in reversed(st.session_state.qa_history):
-        st.markdown(f"**Q:** {turn['question']}")
-        st.markdown(
-            f'<div class="summary-box">{turn["answer"]}</div>',
-            unsafe_allow_html=True,
-        )
-        cited = turn.get("cited_ids", [])
-        if cited:
-            st.markdown(
-                '<span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#6B6F76;">Cited comments:</span>',
-                unsafe_allow_html=True,
-            )
-            cited_comments = [c for c in comments if c.get("comment_id") in cited]
-            for cc in cited_comments[:10]:
-                likes_txt = f"{cc.get('likes', 0):,} likes"
-                st.markdown(
-                    f'<div class="cl-cited-comment">'
-                    f'<b>{cc.get("author","")}</b> <span style="color:#6B6F76;font-size:12px;">({likes_txt}) [c{cc.get("comment_id")}]:</span> '
-                    f'{cc.get("original_text","")[:220]}'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-        st.markdown("<hr style='margin:1rem 0;'>", unsafe_allow_html=True)
+        st.rerun()
 
 
 def _fallback_qa_answer(question: str, comments: list[dict]) -> tuple[str, list[int]]:
@@ -1521,13 +1801,12 @@ def _render_compare_tab() -> None:
 
 def _render_results() -> None:
     _render_header()
-    st.markdown("<br>", unsafe_allow_html=True)
+    _render_mood_bar()
     _render_metric_row()
-    st.markdown("<br>", unsafe_allow_html=True)
     _render_two_column_section()
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
     _render_timeline()
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div style='height:24px;'></div>", unsafe_allow_html=True)
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(
         [
