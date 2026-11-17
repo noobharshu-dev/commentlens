@@ -475,10 +475,6 @@ def _render_sidebar() -> int:
                                     st.error(f"Key {slot.index} ({slot.masked_key}): {groq_res['message']}")
                         except Exception as exc:
                             st.error(f"Groq setup error: {exc}")
-                            else:
-                                st.error(groq_res["message"])
-                        except Exception as exc:
-                            st.error(f"Groq setup error: {exc}")
                     else:
                         try:
                             g_client = _gemini_client()
