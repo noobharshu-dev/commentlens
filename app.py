@@ -5,6 +5,7 @@ Paste a YouTube link to see what your viewers are saying.
 
 from __future__ import annotations
 
+import asyncio
 import html
 import json
 import logging
@@ -27,6 +28,7 @@ try:
     if hasattr(st, "secrets"):
         for _k in [
             "GROQ_API_KEY",
+            "GROQ_API_KEYS",
             "GROQ_MODEL",
             "GROQ_DELAY_SECONDS",
             "LLM_PROVIDER",
@@ -57,6 +59,7 @@ from core.youtube import extract_video_id, get_video_info, fetch_comments, Comme
 from core.cleaning import clean_comments, flag_duplicates, make_batches
 from core.classifier import (
     classify_batch,
+    classify_batches_async,
     validate_results,
     summarize_comments,
     sanitize_model_name,
@@ -64,6 +67,7 @@ from core.classifier import (
     DEFAULT_GROQ_MODEL,
     SUPPORTED_GROQ_MODELS,
 )
+from core.key_pool import GroqKeyPool, KeySlot, parse_api_keys, mask_api_key
 
 try:
     from core.classifier import reset_active_groq_model
@@ -243,16 +247,22 @@ def _gemini_client():
     return genai.Client(api_key=api_key)
 
 
-def _groq_client():
-    """Return a configured Groq client."""
-    api_key = os.getenv("GROQ_API_KEY", GROQ_API_KEY)
-    if not api_key or api_key.strip().startswith("your_"):
+def _get_groq_key_pool() -> GroqKeyPool:
+    """Return an initialized GroqKeyPool from environment or session keys."""
+    raw = os.getenv("GROQ_API_KEYS") or os.getenv("GROQ_API_KEY", GROQ_API_KEY)
+    keys = parse_api_keys(raw)
+    if not keys:
         raise ValueError(
-            "Groq API key is not configured. Please enter a valid Groq API key in the sidebar Settings under 'API keys & credentials'."
+            "Groq API key is not configured. Please enter one or more Groq API keys in the sidebar Settings under 'API keys & credentials'."
         )
-    if Groq is None:
-        raise ImportError("The 'groq' package is not installed. Please run: pip install groq")
-    return Groq(api_key=api_key)
+    return GroqKeyPool(keys)
+
+
+def _groq_client():
+    """Return a configured Groq client from the active key pool."""
+    pool = _get_groq_key_pool()
+    slot = pool.acquire_key()
+    return slot.get_sync_client()
 
 
 def _llm_client(provider: str | None = None):
@@ -269,14 +279,22 @@ def _estimate_requests(limit: int, provider: str = "groq") -> tuple[int, int]:
     if "gemini" in prov:
         batch_size = 40
         delay = GEMINI_DELAY
+        batches = (limit + batch_size - 1) // batch_size
+        requests = batches + 1
+        est_seconds = int(batches * delay + 4)
+        est_mins = max(1, (est_seconds + 30) // 60)
+        return requests, est_mins
     else:
+        raw_keys = os.getenv("GROQ_API_KEYS") or os.getenv("GROQ_API_KEY", "")
+        keys = parse_api_keys(raw_keys)
+        pool_size = max(1, len(keys))
         batch_size = 20
-        delay = GROQ_DELAY
-    batches = (limit + batch_size - 1) // batch_size
-    requests = batches + 1  # +1 for summary
-    est_seconds = int(batches * delay + 4)
-    est_mins = max(1, (est_seconds + 30) // 60)
-    return requests, est_mins
+        batches = (limit + batch_size - 1) // batch_size
+        requests = batches + 1
+        # Each key processes up to 1 request every 2s in parallel
+        est_seconds = int(batches * (2.0 / pool_size) + 4)
+        est_mins = max(1, (est_seconds + 30) // 60)
+        return requests, est_mins
 
 
 def _build_df(comments: list) -> pd.DataFrame:
@@ -357,16 +375,25 @@ def _render_sidebar() -> int:
 
         # API Keys configuration
         with st.expander("API keys & credentials", expanded=False):
-            cur_groq = os.getenv("GROQ_API_KEY", "")
+            cur_groq_raw = os.getenv("GROQ_API_KEYS") or os.getenv("GROQ_API_KEY", "")
+            groq_keys = parse_api_keys(cur_groq_raw)
+            groq_count = len(groq_keys)
             cur_yt = os.getenv("YOUTUBE_API_KEY", "")
             cur_gemini = os.getenv("GEMINI_API_KEY", "")
-            groq_configured = bool(cur_groq and not cur_groq.startswith("your_"))
+            groq_configured = bool(groq_count > 0)
             yt_configured = bool(cur_yt and not cur_yt.startswith("your_"))
             gemini_configured = bool(cur_gemini and not cur_gemini.startswith("your_"))
 
+            if groq_count > 1:
+                groq_status_text = f"Groq API: {groq_count} keys pooled ({groq_count * 30} RPM / {groq_count * 8}K TPM)"
+            elif groq_count == 1:
+                groq_status_text = f"Groq API: 1 key active ({mask_api_key(groq_keys[0])})"
+            else:
+                groq_status_text = "Groq API: Not set"
+
             st.markdown(
                 f'<span style="font-size:12px;color:{"var(--pos)" if groq_configured else "var(--warn)"};">'
-                f'Groq API: {"Configured" if groq_configured else "Not set"}</span><br>'
+                f'{groq_status_text}</span><br>'
                 f'<span style="font-size:12px;color:{"var(--pos)" if yt_configured else "var(--warn)"};">'
                 f'YouTube API: {"Configured" if yt_configured else "Not set"}</span><br>'
                 f'<span style="font-size:12px;color:{"var(--pos)" if gemini_configured else "var(--warn)"};">'
@@ -374,12 +401,12 @@ def _render_sidebar() -> int:
                 unsafe_allow_html=True,
             )
 
-            new_groq_key = st.text_input(
-                "Groq API key",
-                value="" if not groq_configured else "••••••••••••••••",
-                type="password",
-                help="Groq Cloud API key (free tier available at console.groq.com)",
+            new_groq_key = st.text_area(
+                "Groq API key(s)",
+                value="" if not groq_configured else ("••••••••••••••••" if groq_count == 1 else ", ".join(k[:8] + "..." for k in groq_keys)),
+                help="Groq Cloud API key(s). Paste multiple keys separated by commas or newlines to multiply rate limits (30 RPM & 8K TPM per key). Free keys at console.groq.com.",
                 key="sb_groq_key",
+                height=68,
             )
             new_yt_key = st.text_input(
                 "YouTube API key",
@@ -399,12 +426,16 @@ def _render_sidebar() -> int:
             if st.button("Save API keys", key="save_keys_btn"):
                 updated = False
                 if new_groq_key and not new_groq_key.startswith("•"):
-                    os.environ["GROQ_API_KEY"] = new_groq_key.strip()
-                    try:
-                        set_key(str(_ENV_PATH), "GROQ_API_KEY", new_groq_key.strip())
-                    except Exception:
-                        pass
-                    updated = True
+                    parsed_keys = parse_api_keys(new_groq_key)
+                    if parsed_keys:
+                        os.environ["GROQ_API_KEYS"] = ",".join(parsed_keys)
+                        os.environ["GROQ_API_KEY"] = parsed_keys[0]
+                        try:
+                            set_key(str(_ENV_PATH), "GROQ_API_KEYS", ",".join(parsed_keys))
+                            set_key(str(_ENV_PATH), "GROQ_API_KEY", parsed_keys[0])
+                        except Exception:
+                            pass
+                        updated = True
                 if new_yt_key and not new_yt_key.startswith("•"):
                     os.environ["YOUTUBE_API_KEY"] = new_yt_key.strip()
                     try:
@@ -434,10 +465,16 @@ def _render_sidebar() -> int:
 
                     if LLM_PROVIDER == "groq":
                         try:
-                            g_client = _groq_client()
-                            groq_res = test_groq_connection(g_client, GROQ_MODEL)
-                            if groq_res["status"] == "ok":
-                                st.success(groq_res["message"])
+                            pool = _get_groq_key_pool()
+                            for slot in pool.slots:
+                                g_client = slot.get_sync_client()
+                                groq_res = test_groq_connection(g_client, GROQ_MODEL)
+                                if groq_res["status"] == "ok":
+                                    st.success(f"Key {slot.index} ({slot.masked_key}): {groq_res['message']}")
+                                else:
+                                    st.error(f"Key {slot.index} ({slot.masked_key}): {groq_res['message']}")
+                        except Exception as exc:
+                            st.error(f"Groq setup error: {exc}")
                             else:
                                 st.error(groq_res["message"])
                         except Exception as exc:
@@ -620,6 +657,7 @@ def _load_sample_demo() -> None:
     """Load the built-in demo dataset for instant zero-configuration walkthrough."""
     demo_cache = load_cache("dQw4w9WgXcQ") or load_cache("sample_demo")
     if demo_cache:
+        st.query_params["v"] = "dQw4w9WgXcQ"
         st.session_state.video_id = "dQw4w9WgXcQ"
         st.session_state.video_info = demo_cache.get("video", {})
         st.session_state.comments = demo_cache.get("comments", [])
@@ -648,6 +686,7 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
     # Step 1 — extract video_id
     try:
         video_id = extract_video_id(url)
+        st.query_params["v"] = video_id
     except ValueError as exc:
         st.error(str(exc))
         return
@@ -872,60 +911,107 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
     failed_count = 0
     pos_live, neu_live, mix_live, neg_live, ques_live, sugg_live = 0, 0, 0, 0, 0, 0
 
-    for batch_idx, batch in enumerate(make_batches(comments, size=batch_size)):
-        pct = 0.35 + 0.50 * ((batch_idx + 1) / max(total_batches, 1))
-        step_labels[2] = f"Reading batch {batch_idx + 1} of {total_batches}"
-        
-        live_stats = {
-            "pos": pos_live,
-            "neu": neu_live,
-            "mix": mix_live,
-            "neg": neg_live,
-            "ques": ques_live,
-            "sugg": sugg_live,
-            "read": (batch_idx) * batch_size,
-            "total": len(comments),
-        }
-        _render_analyzing_view(3, step_labels, pct, live_stats)
+    if LLM_PROVIDER == "groq":
+        try:
+            key_pool = _get_groq_key_pool()
+        except Exception as exc:
+            st.error(str(exc))
+            return
+
+        def _on_batch_groq(batch_done: list[dict], live_st: dict) -> None:
+            read_cnt = live_st.get("read", 0)
+            tot_cnt = len(comments)
+            pct = min(0.85, 0.35 + 0.50 * (read_cnt / max(tot_cnt, 1)))
+            pool_desc = f"{key_pool.size} Groq key{'s' if key_pool.size != 1 else ''}"
+            step_labels[2] = f"Reading comments ({read_cnt:,} of {tot_cnt:,}) across {pool_desc}"
+            _render_analyzing_view(3, step_labels, pct, live_st)
+
+        session_diagnostics.info(
+            "PIPELINE",
+            f"Starting async Groq classification with {key_pool.size} pooled API key(s) (batch size: {batch_size})...",
+            details={"pool_size": key_pool.size, "total_comments": len(comments)},
+        )
 
         try:
-            results = classify_batch(batch, client, active_model, active_delay)
-            if results is None:
+            comments = asyncio.run(
+                classify_batches_async(
+                    comments=comments,
+                    key_pool=key_pool,
+                    model_name=active_model,
+                    batch_size=batch_size,
+                    on_batch_complete=_on_batch_groq,
+                )
+            )
+            failed_count = sum(1 for c in comments if c.get("classification_status") == "failed")
+        except Exception as exc:
+            session_diagnostics.error("CLASSIFY", f"Async Groq classification failed: {exc}")
+            st.session_state["last_analysis_error"] = str(exc)
+            for c in comments:
+                if "classification_status" not in c:
+                    c["classification_status"] = "failed"
+            failed_count = sum(1 for c in comments if c.get("classification_status") == "failed")
+
+        pos_live = sum(1 for c in comments if str(c.get("primary_sentiment", "")).lower() == "positive")
+        neg_live = sum(1 for c in comments if str(c.get("primary_sentiment", "")).lower() == "negative")
+        neu_live = sum(1 for c in comments if str(c.get("primary_sentiment", "")).lower() == "neutral")
+        mix_live = sum(1 for c in comments if str(c.get("primary_sentiment", "")).lower() == "mixed")
+        ques_live = sum(1 for c in comments if c.get("is_question"))
+        sugg_live = sum(1 for c in comments if c.get("is_suggestion"))
+    else:
+        for batch_idx, batch in enumerate(make_batches(comments, size=batch_size)):
+            pct = 0.35 + 0.50 * ((batch_idx + 1) / max(total_batches, 1))
+            step_labels[2] = f"Reading batch {batch_idx + 1} of {total_batches}"
+            
+            live_stats = {
+                "pos": pos_live,
+                "neu": neu_live,
+                "mix": mix_live,
+                "neg": neg_live,
+                "ques": ques_live,
+                "sugg": sugg_live,
+                "read": (batch_idx) * batch_size,
+                "total": len(comments),
+            }
+            _render_analyzing_view(3, step_labels, pct, live_stats)
+
+            try:
+                results = classify_batch(batch, client, active_model, active_delay)
+                if results is None:
+                    for c in batch:
+                        c["classification_status"] = "failed"
+                    failed_count += len(batch)
+                else:
+                    validated = validate_results(results, batch)
+                    result_map = {r["comment_id"]: r for r in validated}
+                    for c in batch:
+                        cid = c["comment_id"]
+                        if cid in result_map:
+                            c.update(result_map[cid])
+                            c["classification_status"] = "ok"
+                            s_val = c.get("primary_sentiment", "Neutral")
+                            if s_val == "Positive": pos_live += 1
+                            elif s_val == "Negative": neg_live += 1
+                            elif s_val == "Mixed": mix_live += 1
+                            else: neu_live += 1
+                            if c.get("is_question"): ques_live += 1
+                            if c.get("is_suggestion"): sugg_live += 1
+                        else:
+                            c["classification_status"] = "failed"
+                            failed_count += 1
+            except ValueError as exc:
+                err_msg = str(exc)
+                session_diagnostics.error("CLASSIFY", f"Fatal error in batch {batch_idx + 1}: {err_msg}")
+                st.session_state["last_analysis_error"] = err_msg
+                for c in comments[batch_idx * batch_size:]:
+                    c["classification_status"] = "failed"
+                failed_count = len(comments) - (pos_live + neg_live + mix_live + neu_live)
+                break
+            except Exception as exc:
                 for c in batch:
                     c["classification_status"] = "failed"
                 failed_count += len(batch)
-            else:
-                validated = validate_results(results, batch)
-                result_map = {r["comment_id"]: r for r in validated}
-                for c in batch:
-                    cid = c["comment_id"]
-                    if cid in result_map:
-                        c.update(result_map[cid])
-                        c["classification_status"] = "ok"
-                        s_val = c.get("primary_sentiment", "Neutral")
-                        if s_val == "Positive": pos_live += 1
-                        elif s_val == "Negative": neg_live += 1
-                        elif s_val == "Mixed": mix_live += 1
-                        else: neu_live += 1
-                        if c.get("is_question"): ques_live += 1
-                        if c.get("is_suggestion"): sugg_live += 1
-                    else:
-                        c["classification_status"] = "failed"
-                        failed_count += 1
-        except ValueError as exc:
-            err_msg = str(exc)
-            session_diagnostics.error("CLASSIFY", f"Fatal error in batch {batch_idx + 1}: {err_msg}")
-            st.session_state["last_analysis_error"] = err_msg
-            for c in comments[batch_idx * batch_size:]:
-                c["classification_status"] = "failed"
-            failed_count = len(comments) - (pos_live + neg_live + mix_live + neu_live)
-            break
-        except Exception as exc:
-            for c in batch:
-                c["classification_status"] = "failed"
-            failed_count += len(batch)
-            session_diagnostics.error("CLASSIFY", f"Batch {batch_idx + 1} failed: {exc}")
-            logger.warning("Batch %d failed: %s", batch_idx + 1, exc)
+                session_diagnostics.error("CLASSIFY", f"Batch {batch_idx + 1} failed: {exc}")
+                logger.warning("Batch %d failed: %s", batch_idx + 1, exc)
 
     # 4e — summarize
     st.session_state["diagnostics_logs"] = session_diagnostics.to_dict_list()
@@ -1010,7 +1096,7 @@ def _render_header() -> None:
     cache_data = load_cache(st.session_state.video_id) if st.session_state.video_id else None
     analyzed_at = (cache_data or {}).get("analyzed_at", "")
 
-    left, right = st.columns([7, 3])
+    left, right = st.columns([6, 4])
     with left:
         title = video_info.get("title", "Untitled video")
         channel = video_info.get("channel", "")
@@ -1037,7 +1123,13 @@ def _render_header() -> None:
         )
 
     with right:
-        btn_col1, btn_col2 = st.columns(2)
+        btn_col0, btn_col1, btn_col2 = st.columns([1, 1, 1.2])
+        with btn_col0:
+            if st.button("← New video", key="hdr_new_analysis", use_container_width=True):
+                st.query_params.clear()
+                for k, v in _DEFAULTS.items():
+                    st.session_state[k] = v
+                st.rerun()
         with btn_col1:
             if st.button("Re-analyze", key="hdr_reanalyze", use_container_width=True):
                 url = f"https://www.youtube.com/watch?v={st.session_state.video_id}"
@@ -1097,7 +1189,7 @@ def _render_header() -> None:
 # ---------------------------------------------------------------------------
 
 def _render_mood_bar() -> None:
-    """Render the signature mood bar with 0-100 score and flex segments."""
+    """Render the signature mood bar with 0-100 score and non-overlapping Swiss legend grid."""
     stats = st.session_state.stats or {}
     score = stats.get("sentiment_score", 50)
     label = stats.get("sentiment_label", "Mixed")
@@ -1113,6 +1205,22 @@ def _render_mood_bar() -> None:
     mix_pct = round(mix * 100 / tot)
     neg_pct = round(neg * 100 / tot)
 
+    # Build non-zero segments to eliminate phantom slivers and prevent overflow
+    segments_html = []
+    if pos > 0:
+        segments_html.append(f'<div class="seg" style="flex:{pos};background:var(--pos);height:52px;" title="Positive: {pos:,} ({pos_pct}%)"></div>')
+    if neu > 0:
+        segments_html.append(f'<div class="seg" style="flex:{neu};background:var(--neu);height:52px;" title="Neutral: {neu:,} ({neu_pct}%)"></div>')
+    if mix > 0:
+        segments_html.append(f'<div class="seg" style="flex:{mix};background:var(--mix);height:52px;" title="Mixed: {mix:,} ({mix_pct}%)"></div>')
+    if neg > 0:
+        segments_html.append(f'<div class="seg" style="flex:{neg};background:var(--neg);height:52px;" title="Negative: {neg:,} ({neg_pct}%)"></div>')
+
+    if not segments_html:
+        segments_html.append('<div class="seg" style="flex:1;background:var(--line);height:52px;"></div>')
+
+    bar_html = "".join(segments_html)
+
     st.markdown(
         f"""
         <div style="display:grid;grid-template-columns:200px 1fr;gap:48px;margin:28px 0 20px 0;align-items:end;">
@@ -1123,16 +1231,37 @@ def _render_mood_bar() -> None:
           </div>
           <div>
             <div class="mood">
-              <div class="seg" style="flex:{max(pos, 1)};background:var(--pos);height:52px;"></div>
-              <div class="seg" style="flex:{max(neu, 1)};background:var(--neu);height:52px;"></div>
-              <div class="seg" style="flex:{max(mix, 1)};background:var(--mix);height:52px;"></div>
-              <div class="seg" style="flex:{max(neg, 1)};background:var(--neg);height:52px;"></div>
+              {bar_html}
             </div>
-            <div style="display:flex;gap:6px;margin-top:10px;">
-              <div class="seglab" style="flex:{max(pos, 1)};min-width:0;white-space:nowrap;"><b>Positive</b>{pos:,} &nbsp; {pos_pct}%</div>
-              <div class="seglab" style="flex:{max(neu, 1)};min-width:0;white-space:nowrap;"><b>Neutral</b>{neu:,} &nbsp; {neu_pct}%</div>
-              <div class="seglab" style="flex:{max(mix, 1)};min-width:0;white-space:nowrap;"><b>Mixed</b>{mix:,} &nbsp; {mix_pct}%</div>
-              <div class="seglab" style="flex:{max(neg, 1)};min-width:0;white-space:nowrap;"><b>Negative</b>{neg:,} &nbsp; {neg_pct}%</div>
+            <div class="mood-legend-grid">
+              <div class="mood-legend-item">
+                <div class="mood-legend-header">
+                  <span class="mood-legend-dot" style="background:var(--pos);"></span>
+                  <span class="mood-legend-title">Positive</span>
+                </div>
+                <div class="mood-legend-meta">{pos:,} &nbsp;<span class="mood-legend-pct">{pos_pct}%</span></div>
+              </div>
+              <div class="mood-legend-item">
+                <div class="mood-legend-header">
+                  <span class="mood-legend-dot" style="background:var(--neu);"></span>
+                  <span class="mood-legend-title">Neutral</span>
+                </div>
+                <div class="mood-legend-meta">{neu:,} &nbsp;<span class="mood-legend-pct">{neu_pct}%</span></div>
+              </div>
+              <div class="mood-legend-item">
+                <div class="mood-legend-header">
+                  <span class="mood-legend-dot" style="background:var(--mix);"></span>
+                  <span class="mood-legend-title">Mixed</span>
+                </div>
+                <div class="mood-legend-meta">{mix:,} &nbsp;<span class="mood-legend-pct">{mix_pct}%</span></div>
+              </div>
+              <div class="mood-legend-item">
+                <div class="mood-legend-header">
+                  <span class="mood-legend-dot" style="background:var(--neg);"></span>
+                  <span class="mood-legend-title">Negative</span>
+                </div>
+                <div class="mood-legend-meta">{neg:,} &nbsp;<span class="mood-legend-pct">{neg_pct}%</span></div>
+              </div>
             </div>
           </div>
         </div>
@@ -2103,11 +2232,20 @@ def _render_diagnostics_tab() -> None:
         active_disp_model = GROQ_MODEL if LLM_PROVIDER == "groq" else GEMINI_MODEL
         active_disp_delay = GROQ_DELAY if LLM_PROVIDER == "groq" else GEMINI_DELAY
         active_prov_name = "Groq" if LLM_PROVIDER == "groq" else "Gemini"
+        if LLM_PROVIDER == "groq":
+            try:
+                cur_pool = _get_groq_key_pool()
+                p_sz = cur_pool.size
+                pool_info = f"{p_sz} key{'s' if p_sz != 1 else ''} pooled ({p_sz * 30} RPM / {p_sz * 8}K TPM)"
+            except Exception:
+                pool_info = f"{active_disp_delay}s inter-batch delay"
+        else:
+            pool_info = f"{active_disp_delay}s inter-batch delay"
         st.markdown(
             f'<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:14px 16px;">'
             f'<div style="font-size:12px;color:var(--muted);">Active {active_prov_name} model</div>'
             f'<div style="font-size:16px;font-weight:650;color:var(--accent);word-break:break-all;">{active_disp_model}</div>'
-            f'<div style="font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;">{active_disp_delay}s inter-batch delay</div>'
+            f'<div style="font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;">{pool_info}</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -2123,26 +2261,59 @@ def _render_diagnostics_tab() -> None:
             unsafe_allow_html=True,
         )
 
-    st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
+    # Groq Key Pool Health Cards
+    if LLM_PROVIDER == "groq":
+        try:
+            pool = _get_groq_key_pool()
+            summary = pool.get_status_summary()
+            st.markdown(
+                f'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:20px;margin-bottom:8px;">'
+                f'<span class="cl-section-heading" style="margin:0;">Groq API key pool status</span>'
+                f'<span class="note" style="color:var(--muted);font-size:12px;">{len(summary)} account(s) pooled · parallel async dispatch · 60s auto-cooling on 429</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            cols_count = min(max(1, len(summary)), 4)
+            k_cols = st.columns(cols_count)
+            for idx, k in enumerate(summary):
+                with k_cols[idx % cols_count]:
+                    k_status_color = "var(--warn)" if k["is_cooling"] else "var(--pos)"
+                    st.markdown(
+                        f'<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:10px;">'
+                        f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+                        f'<span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Key #{k["index"]}</span>'
+                        f'<span style="font-size:11.5px;color:{k_status_color};font-weight:600;">● {k["status"]}</span>'
+                        f'</div>'
+                        f'<div style="font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--ink);margin:4px 0;">{k["masked_key"]}</div>'
+                        f'<div style="font-size:11.5px;color:var(--muted);">Requests: {k["requests_count"]} · Errors: {k["error_count"]}</div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+        except Exception:
+            pass
+
+    st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
 
     # API Connection Diagnostics Tool
     with st.expander("Test API connectivity now", expanded=(unclass > 0 or len(err_events) > 0)):
         st.markdown('<div class="note" style="margin-bottom:10px;">Run a lightweight ping to verify your API credentials directly:</div>', unsafe_allow_html=True)
         t_col1, t_col2, t_col3 = st.columns(3)
         with t_col1:
-            if st.button("Ping Groq API", key="diag_test_groq", use_container_width=True):
+            if st.button("Ping Groq API Key(s)", key="diag_test_groq", use_container_width=True):
                 try:
-                    gr_client = _groq_client()
-                    with st.spinner("Testing Groq API connection..."):
-                        res = test_groq_connection(gr_client, GROQ_MODEL)
-                        if res["status"] == "ok":
-                            st.success(f"✓ {res['message']}")
-                        else:
-                            st.error(f"✗ {res['message']}")
-                            if res.get("details"):
-                                st.code(json.dumps(res["details"], indent=2))
+                    pool = _get_groq_key_pool()
+                    with st.spinner(f"Testing {pool.size} Groq API key(s)..."):
+                        for slot in pool.slots:
+                            client = slot.get_sync_client()
+                            res = test_groq_connection(client, GROQ_MODEL)
+                            if res["status"] == "ok":
+                                st.success(f"✓ Key {slot.index} ({slot.masked_key}): {res['message']}")
+                            else:
+                                st.error(f"✗ Key {slot.index} ({slot.masked_key}): {res['message']}")
+                                if res.get("details"):
+                                    st.code(json.dumps(res["details"], indent=2))
                 except Exception as exc:
-                    st.error(f"Groq client setup error: {exc}")
+                    st.error(f"Groq setup error: {exc}")
         with t_col2:
             if st.button("Ping Gemini API", key="diag_test_gemini", use_container_width=True):
                 try:

@@ -63,3 +63,16 @@ def test_sanitize_model_name():
         assert "2.0" not in m
         assert "1.5" not in m
     assert SUPPORTED_GEMINI_MODELS[0] == "gemini-3.5-flash-lite"
+
+
+def test_diagnostics_records_key_pool_events():
+    from core.diagnostics import session_diagnostics
+    session_diagnostics.clear()
+    session_diagnostics.info("KEY-POOL", "Key 1 (gsk_...3a8f) dispatched batch 1/10")
+    session_diagnostics.warning("KEY-POOL", "Key 2 (gsk_...4b82) hit rate limit (HTTP 429), cooling for 60s")
+    events = session_diagnostics.to_dict_list()
+    assert len(events) == 2
+    assert events[0]["stage"] == "KEY-POOL"
+    assert "Key 1" in events[0]["message"]
+    assert "Key 2" in events[1]["message"]
+
