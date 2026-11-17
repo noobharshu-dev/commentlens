@@ -125,6 +125,7 @@ _DEFAULTS: dict = {
     "selected_cid": None,
     "diagnostics_logs": [],
     "last_analysis_error": None,
+    "llm_provider": os.getenv("LLM_PROVIDER", "groq").lower(),
 }
 
 for _key, _val in _DEFAULTS.items():
@@ -186,10 +187,10 @@ TABLE_COLUMNS = [
 ]
 
 SENTIMENT_COLORS = {
-    "Positive": "#2E7D5B",
-    "Negative": "#B23B3B",
-    "Neutral": "#8A8F98",
-    "Mixed": "#9A6B12",
+    "Positive": "#1B7A4B",
+    "Negative": "#C53030",
+    "Neutral": "#71807D",
+    "Mixed": "#B7791F",
 }
 
 # ---------------------------------------------------------------------------
@@ -243,7 +244,7 @@ def _groq_client():
 
 def _llm_client(provider: str | None = None):
     """Return the configured LLM client based on selected provider."""
-    p = (provider or LLM_PROVIDER or "groq").lower()
+    p = (provider or st.session_state.get("llm_provider") or LLM_PROVIDER or "groq").lower()
     if "gemini" in p:
         return _gemini_client()
     return _groq_client()
@@ -293,6 +294,7 @@ def _render_sidebar() -> int:
         )
         LLM_PROVIDER = "gemini" if "Gemini" in selected_provider else "groq"
         os.environ["LLM_PROVIDER"] = LLM_PROVIDER
+        st.session_state["llm_provider"] = LLM_PROVIDER
 
         if LLM_PROVIDER == "groq":
             groq_opts = SUPPORTED_GROQ_MODELS
@@ -547,7 +549,7 @@ def _render_empty_state(sidebar_limit: int) -> None:
     feat_col1, feat_col2, feat_col3 = st.columns(3)
     with feat_col1:
         st.markdown(
-            '<div class="cl-clay-sm" style="border-radius:16px;box-shadow:var(--clay-sm);background:#FFFFFF;padding:18px 20px;">'
+            '<div class="swiss-card" style="border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);padding:20px;">'
             '<div style="font-weight:600;font-size:15px;color:var(--ink);margin-bottom:6px;">14 click groups</div>'
             '<div style="font-size:13px;color:var(--muted);line-height:1.5;">Positive, negative, questions, suggestions, bug reports, and duplicates counted and ready.</div>'
             '</div>',
@@ -555,7 +557,7 @@ def _render_empty_state(sidebar_limit: int) -> None:
         )
     with feat_col2:
         st.markdown(
-            '<div class="cl-clay-sm" style="border-radius:16px;box-shadow:var(--clay-sm);background:#FFFFFF;padding:18px 20px;">'
+            '<div class="swiss-card" style="border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);padding:20px;">'
             '<div style="font-weight:600;font-size:15px;color:var(--ink);margin-bottom:6px;">Ask the comments</div>'
             '<div style="font-size:13px;color:var(--muted);line-height:1.5;">Type a question and get answers citing exact comment IDs so every point is verified.</div>'
             '</div>',
@@ -563,7 +565,7 @@ def _render_empty_state(sidebar_limit: int) -> None:
         )
     with feat_col3:
         st.markdown(
-            '<div class="cl-clay-sm" style="border-radius:16px;box-shadow:var(--clay-sm);background:#FFFFFF;padding:18px 20px;">'
+            '<div class="swiss-card" style="border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);padding:20px;">'
             '<div style="font-weight:600;font-size:15px;color:var(--ink);margin-bottom:6px;">Private and local</div>'
             '<div style="font-size:13px;color:var(--muted);line-height:1.5;">Results are saved locally on your computer. Re-inspect anytime with zero quota used.</div>'
             '</div>',
@@ -664,13 +666,13 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
         steps_html = ""
         for i, label in enumerate(step_labels, start=1):
             if i < active_step:
-                dot = '<span style="margin-top:6px;width:10px;height:10px;border-radius:50%;background:var(--pos);display:inline-block;"></span>'
+                dot = '<span style="margin-top:6px;width:8px;height:8px;border-radius:var(--radius-pill);background:var(--pos);display:inline-block;"></span>'
                 badge = "Done"
             elif i == active_step:
-                dot = '<span class="pulse" style="margin-top:6px;width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block;"></span>'
+                dot = '<span style="margin-top:6px;width:8px;height:8px;border-radius:var(--radius-pill);background:var(--accent);display:inline-block;"></span>'
                 badge = "Working"
             else:
-                dot = '<span style="margin-top:6px;width:10px;height:10px;border-radius:50%;background:var(--faint);display:inline-block;"></span>'
+                dot = '<span style="margin-top:6px;width:8px;height:8px;border-radius:var(--radius-pill);background:var(--faint);display:inline-block;"></span>'
                 badge = "Waiting"
 
             steps_html += f"""
@@ -696,20 +698,20 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
             rem = max(tot_cnt - read_cnt, 0)
             right_html = f"""
             <div>
-              <div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;">Read so far</div>
+              <div class="h2" style="font-size:18px;font-weight:650;color:var(--ink);">Read so far</div>
               <p class="note" style="margin:4px 0 20px;color:var(--muted);font-size:13px;">{read_cnt:,} of {tot_cnt:,} comments. The bar grows as each batch finishes.</p>
               <div class="mood">
-                <div class="seg" style="flex:{max(pos, 1)};background:var(--pos);height:48px;"></div>
-                <div class="seg" style="flex:{max(neu, 1)};background:var(--neu);height:48px;"></div>
-                <div class="seg" style="flex:{max(mix, 1)};background:var(--mix);height:48px;"></div>
-                <div class="seg" style="flex:{max(neg, 1)};background:var(--neg);height:48px;"></div>
-                <div class="seg" style="flex:{max(rem, 0)};background:repeating-linear-gradient(135deg,#E8EDEA 0 8px,#F2F5F3 8px 16px);height:48px;"></div>
+                <div class="seg" style="flex:{max(pos, 1)};background:var(--pos);height:44px;"></div>
+                <div class="seg" style="flex:{max(neu, 1)};background:var(--neu);height:44px;"></div>
+                <div class="seg" style="flex:{max(mix, 1)};background:var(--mix);height:44px;"></div>
+                <div class="seg" style="flex:{max(neg, 1)};background:var(--neg);height:44px;"></div>
+                <div class="seg" style="flex:{max(rem, 0)};background:repeating-linear-gradient(135deg,var(--line) 0 6px,var(--paper) 6px 12px);height:44px;"></div>
               </div>
               <div style="display:flex;gap:36px;margin-top:20px;">
-                <div><b class="tab" style="font-size:26px;font-family:'Inter Display',Inter;color:var(--ink);">{pos:,}</b><div class="note" style="color:var(--muted);font-size:13px;">positive</div></div>
-                <div><b class="tab" style="font-size:26px;font-family:'Inter Display',Inter;color:var(--ink);">{neg:,}</b><div class="note" style="color:var(--muted);font-size:13px;">negative</div></div>
-                <div><b class="tab" style="font-size:26px;font-family:'Inter Display',Inter;color:var(--ink);">{ques:,}</b><div class="note" style="color:var(--muted);font-size:13px;">questions</div></div>
-                <div><b class="tab" style="font-size:26px;font-family:'Inter Display',Inter;color:var(--ink);">{sugg:,}</b><div class="note" style="color:var(--muted);font-size:13px;">suggestions</div></div>
+                <div><b class="tab" style="font-size:24px;font-family:var(--font-sans);color:var(--ink);">{pos:,}</b><div class="note" style="color:var(--muted);font-size:13px;">positive</div></div>
+                <div><b class="tab" style="font-size:24px;font-family:var(--font-sans);color:var(--ink);">{neg:,}</b><div class="note" style="color:var(--muted);font-size:13px;">negative</div></div>
+                <div><b class="tab" style="font-size:24px;font-family:var(--font-sans);color:var(--ink);">{ques:,}</b><div class="note" style="color:var(--muted);font-size:13px;">questions</div></div>
+                <div><b class="tab" style="font-size:24px;font-family:var(--font-sans);color:var(--ink);">{sugg:,}</b><div class="note" style="color:var(--muted);font-size:13px;">suggestions</div></div>
               </div>
             </div>
             """
@@ -737,12 +739,12 @@ def _run_analysis(url: str, limit: int, force_reanalyze: bool = False) -> None:
         if recent_evs:
             ev_lines = ""
             for ev in recent_evs:
-                c_hex = "#2F8A5B" if ev.level == "SUCCESS" else ("#C2453D" if ev.level == "ERROR" else ("#D4A017" if ev.level == "WARNING" else "#0F766E"))
+                c_hex = "var(--pos)" if ev.level == "SUCCESS" else ("var(--neg)" if ev.level == "ERROR" else ("var(--warn)" if ev.level == "WARNING" else "var(--accent)"))
                 dur_text = f" · {ev.duration_ms:.0f}ms" if ev.duration_ms is not None else ""
-                ev_lines += f'<div style="font-family:monospace;font-size:12px;margin:3px 0;line-height:1.4;"><span style="color:#667370;">[{ev.timestamp}]</span> <b style="color:{c_hex};">[{ev.stage}]</b> <span style="color:#16211F;">{ev.message}</span><span style="color:#667370;">{dur_text}</span></div>'
+                ev_lines += f'<div style="font-family:var(--font-mono);font-size:12px;margin:3px 0;line-height:1.4;"><span style="color:var(--muted);">[{ev.timestamp}]</span> <b style="color:{c_hex};">[{ev.stage}]</b> <span style="color:var(--ink);">{ev.message}</span><span style="color:var(--muted);">{dur_text}</span></div>'
             logs_placeholder.markdown(
-                f'<div style="margin-top:18px;padding:12px 16px;background:#FFFFFF;border:1px solid #E1E6E3;border-radius:10px;">'
-                f'<div style="font-size:11px;font-weight:600;color:#0F766E;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">Live API & Pipeline Diagnostics</div>'
+                f'<div style="margin-top:18px;padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);">'
+                f'<div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">Live API & Pipeline Diagnostics</div>'
                 f'{ev_lines}'
                 f'</div>',
                 unsafe_allow_html=True,
@@ -970,7 +972,7 @@ def _render_header() -> None:
         video_id = st.session_state.video_id or ""
         yt_link = f"https://www.youtube.com/watch?v={video_id}"
         st.markdown(
-            f'<h1 style="font-size:34px;line-height:1.15;font-weight:650;letter-spacing:-.02em;margin-bottom:8px;">'
+            f'<h1 style="font-size:32px;line-height:1.15;font-weight:650;letter-spacing:-.02em;margin-bottom:8px;">'
             f'<a href="{yt_link}" target="_blank" style="color:var(--ink);text-decoration:none;">{title}</a></h1>',
             unsafe_allow_html=True,
         )
@@ -983,7 +985,7 @@ def _render_header() -> None:
             meta_items.append(ago)
         meta_str = " &nbsp;&middot;&nbsp; ".join([m for m in meta_items if m])
         st.markdown(
-            f'<div class="muted tab" style="color:var(--muted);font-size:14px;">{meta_str}</div>',
+            f'<div class="muted tab" style="color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;">{meta_str}</div>',
             unsafe_allow_html=True,
         )
 
@@ -1068,16 +1070,16 @@ def _render_mood_bar() -> None:
         f"""
         <div style="display:grid;grid-template-columns:200px 1fr;gap:48px;margin:28px 0 20px 0;align-items:end;">
           <div>
-            <div class="tab" style="font-family:'Inter Display',Inter,sans-serif;font-size:84px;font-weight:650;letter-spacing:-.04em;line-height:.9;color:var(--ink);">{score:.0f}</div>
-            <div style="margin-top:8px;font-weight:600;font-size:16px;color:var(--ink);">{label}</div>
+            <div class="tab" style="font-family:var(--font-sans);font-size:80px;font-weight:650;letter-spacing:-.04em;line-height:.9;color:var(--ink);font-variant-numeric:tabular-nums;">{score:.0f}</div>
+            <div style="margin-top:8px;font-weight:600;font-size:15px;color:var(--ink);">{label}</div>
             <div class="note" style="color:var(--muted);font-size:13px;">Mood score out of 100</div>
           </div>
           <div>
             <div class="mood">
-              <div class="seg" style="flex:{max(pos, 1)};background:var(--pos);height:60px;"></div>
-              <div class="seg" style="flex:{max(neu, 1)};background:var(--neu);height:60px;"></div>
-              <div class="seg" style="flex:{max(mix, 1)};background:var(--mix);height:60px;"></div>
-              <div class="seg" style="flex:{max(neg, 1)};background:var(--neg);height:60px;"></div>
+              <div class="seg" style="flex:{max(pos, 1)};background:var(--pos);height:52px;"></div>
+              <div class="seg" style="flex:{max(neu, 1)};background:var(--neu);height:52px;"></div>
+              <div class="seg" style="flex:{max(mix, 1)};background:var(--mix);height:52px;"></div>
+              <div class="seg" style="flex:{max(neg, 1)};background:var(--neg);height:52px;"></div>
             </div>
             <div style="display:flex;gap:6px;margin-top:10px;">
               <div class="seglab" style="flex:{max(pos, 1)};min-width:0;white-space:nowrap;"><b>Positive</b>{pos:,} &nbsp; {pos_pct}%</div>
@@ -1107,19 +1109,19 @@ def _render_metric_row() -> None:
         f"""
         <div style="display:flex;gap:48px;margin:12px 0 28px 0;align-items:flex-start;">
           <div>
-            <div style="font-family:'Inter Display',Inter;font-size:32px;font-weight:650;color:#2F8A5B;font-variant-numeric:tabular-nums;line-height:1.1;">{positive_pct:.0f}%</div>
+            <div style="font-family:var(--font-sans);font-size:32px;font-weight:650;color:var(--pos);font-variant-numeric:tabular-nums;line-height:1.1;">{positive_pct:.0f}%</div>
             <div style="color:var(--muted);font-size:13px;margin-top:2px;">positive</div>
           </div>
           <div>
-            <div style="font-family:'Inter Display',Inter;font-size:32px;font-weight:650;color:#C2453D;font-variant-numeric:tabular-nums;line-height:1.1;">{negative_pct:.0f}%</div>
+            <div style="font-family:var(--font-sans);font-size:32px;font-weight:650;color:var(--neg);font-variant-numeric:tabular-nums;line-height:1.1;">{negative_pct:.0f}%</div>
             <div style="color:var(--muted);font-size:13px;margin-top:2px;">negative</div>
           </div>
           <div>
-            <div style="font-family:'Inter Display',Inter;font-size:32px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.1;">{questions:,}</div>
+            <div style="font-family:var(--font-sans);font-size:32px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.1;">{questions:,}</div>
             <div style="color:var(--muted);font-size:13px;margin-top:2px;">questions</div>
           </div>
           <div>
-            <div style="font-family:'Inter Display',Inter;font-size:32px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.1;">{duplicates:,}</div>
+            <div style="font-family:var(--font-sans);font-size:32px;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.1;">{duplicates:,}</div>
             <div style="color:var(--muted);font-size:13px;margin-top:2px;">duplicates</div>
           </div>
         </div>
@@ -1150,8 +1152,8 @@ def _render_sentiment_donut() -> None:
         go.Pie(
             labels=labels,
             values=values,
-            hole=0.65,
-            marker=dict(colors=colors, line=dict(color="#FAFAF7", width=2)),
+            hole=0.68,
+            marker=dict(colors=colors, line=dict(color="rgba(0,0,0,0)", width=1)),
             textinfo="none",
             hovertemplate="%{label}: %{value:,} (%{percent})<extra></extra>",
         )
@@ -1164,7 +1166,7 @@ def _render_sentiment_donut() -> None:
             orientation="v",
             bgcolor="rgba(0,0,0,0)",
             borderwidth=0,
-            font=dict(family="Inter, system-ui, sans-serif", size=13, color="#1F2328"),
+            font=dict(family="Inter, system-ui, sans-serif", size=13, color="#111817"),
         ),
         margin=dict(t=10, b=10, l=0, r=0),
         annotations=[
@@ -1172,7 +1174,7 @@ def _render_sentiment_donut() -> None:
                 text=f"<b>{score:.0f}</b>",
                 x=0.5,
                 y=0.55,
-                font=dict(size=28, family="Inter, system-ui, sans-serif", color="#1F2328"),
+                font=dict(size=28, family="Inter, system-ui, sans-serif", color="#111817"),
                 showarrow=False,
                 xref="paper",
                 yref="paper",
@@ -1181,7 +1183,7 @@ def _render_sentiment_donut() -> None:
                 text=label,
                 x=0.5,
                 y=0.42,
-                font=dict(size=13, family="Inter, system-ui, sans-serif", color="#6B6F76"),
+                font=dict(size=13, family="Inter, system-ui, sans-serif", color="#525F5C"),
                 showarrow=False,
                 xref="paper",
                 yref="paper",
@@ -1204,18 +1206,18 @@ def _render_language_bar() -> None:
 
     lang_colors = {
         "English": "#0F766E",
-        "Hindi": "#9A6B12",
-        "Bengali": "#2E7D5B",
-        "Hinglish": "#8A8F98",
-        "Other": "#B23B3B",
+        "Hindi": "#B7791F",
+        "Bengali": "#1B7A4B",
+        "Hinglish": "#71807D",
+        "Other": "#C53030",
     }
 
-    st.markdown('<div class="h2" style="font-size:18px;font-weight:650;color:#0B4F4A;margin-top:16px;">Language breakdown</div>', unsafe_allow_html=True)
+    st.markdown('<div class="cl-section-heading" style="margin-top:16px;">Language breakdown</div>', unsafe_allow_html=True)
     bars_html = ""
     for lang in ["English", "Hindi", "Bengali", "Hinglish", "Other"]:
         count = breakdown.get(lang, 0)
         pct = count / total * 100
-        color = lang_colors.get(lang, "#8A8F98")
+        color = lang_colors.get(lang, "#71807D")
         bars_html += (
             f'<div class="lang-bar">'
             f'<div class="lang-header">'
@@ -1231,7 +1233,7 @@ def _render_language_bar() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Results — theme bars (teal gradient bars on clay track)
+# Results — theme bars (clean accent on Swiss rectilinear track)
 # ---------------------------------------------------------------------------
 
 def _render_theme_bars() -> None:
@@ -1242,7 +1244,7 @@ def _render_theme_bars() -> None:
 
     max_count = max(c for _, c in themes) if themes else 1
 
-    st.markdown('<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;margin-bottom:12px;">Top themes (suggestions & criticism)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="cl-section-heading" style="margin-bottom:12px;">Top themes (suggestions & criticism)</div>', unsafe_allow_html=True)
     for theme_name, count in themes:
         pct = count / max_count * 100
         col_bar, col_btn = st.columns([5, 1])
@@ -1251,10 +1253,10 @@ def _render_theme_bars() -> None:
                 f"""
                 <div style="display:grid;grid-template-columns:130px 1fr 36px;gap:14px;align-items:center;margin:10px 0;">
                   <span style="font-weight:500;font-size:14px;color:var(--ink);">{theme_name}</span>
-                  <div class="theme-bar-track" style="height:12px;background:#E2EDE9;border-radius:6px;box-shadow:var(--clay-press);">
-                    <i class="theme-bar-fill bar-fill" style="display:block;height:12px;width:{pct:.0f}%;background:linear-gradient(90deg,#4FB8AC,#0F766E);border-radius:6px;box-shadow:2px 2px 6px rgba(15,118,110,.25);"></i>
+                  <div class="theme-bar-track" style="height:8px;background:var(--line);border-radius:var(--radius-sm);overflow:hidden;">
+                    <i class="theme-bar-fill" style="display:block;height:8px;width:{pct:.0f}%;background:var(--accent);border-radius:var(--radius-sm);"></i>
                   </div>
-                  <span class="tab muted" style="text-align:right;font-size:13px;color:var(--muted);">{count}</span>
+                  <span class="tab muted" style="text-align:right;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;">{count}</span>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -1328,10 +1330,10 @@ def _render_timeline() -> None:
             x=df_timeline["date"],
             y=df_timeline["positive"],
             name="Positive",
-            line=dict(color="#2F8A5B", width=2.5),
+            line=dict(color="#1B7A4B", width=2),
             mode="lines",
             fill="tozeroy",
-            fillcolor="rgba(47, 138, 91, 0.08)",
+            fillcolor="rgba(27, 122, 75, 0.08)",
             hovertemplate="%{x|%b %d, %Y}<br>Positive: %{y:,}<extra></extra>",
         )
     )
@@ -1341,7 +1343,7 @@ def _render_timeline() -> None:
             x=df_timeline["date"],
             y=df_timeline["negative"],
             name="Negative",
-            line=dict(color="#C2453D", width=2.5),
+            line=dict(color="#C53030", width=2),
             mode="lines",
             hovertemplate="%{x|%b %d, %Y}<br>Negative: %{y:,}<extra></extra>",
         )
@@ -1356,8 +1358,8 @@ def _render_timeline() -> None:
                 name="Upload day",
                 text=["Upload day"],
                 textposition="top right",
-                textfont=dict(family="Inter, system-ui, sans-serif", size=12, color="#16211F"),
-                marker=dict(size=10, color="#FFFFFF", line=dict(color="#2F8A5B", width=2.5)),
+                textfont=dict(family="Inter, system-ui, sans-serif", size=12, color="#111817"),
+                marker=dict(size=8, color="#FFFFFF", line=dict(color="#1B7A4B", width=2)),
                 showlegend=False,
                 hoverinfo="skip",
             )
@@ -1370,19 +1372,19 @@ def _render_timeline() -> None:
         legend=dict(
             bgcolor="rgba(0,0,0,0)",
             borderwidth=0,
-            font=dict(family="Inter, system-ui, sans-serif", size=13, color="#16211F"),
+            font=dict(family="Inter, system-ui, sans-serif", size=13, color="#111817"),
         ),
         xaxis=dict(
-            gridcolor="#E6EAE7",
+            gridcolor="#E2E7E5",
             showgrid=True,
             zeroline=False,
-            tickfont=dict(family="Inter, system-ui, sans-serif", size=11, color="#9AA5A2"),
+            tickfont=dict(family="Inter, system-ui, sans-serif", size=11, color="#525F5C"),
         ),
         yaxis=dict(
-            gridcolor="#E6EAE7",
+            gridcolor="#E2E7E5",
             showgrid=True,
             zeroline=False,
-            tickfont=dict(family="Inter, system-ui, sans-serif", size=11, color="#9AA5A2"),
+            tickfont=dict(family="Inter, system-ui, sans-serif", size=11, color="#525F5C"),
         ),
         margin=dict(t=20, b=20, l=10, r=10),
         font=dict(family="Inter, system-ui, sans-serif"),
@@ -1390,8 +1392,8 @@ def _render_timeline() -> None:
         hovermode="x unified",
     )
 
-    st.markdown('<div class="h2" style="font-size:20px;font-weight:650;color:#0B4F4A;margin-bottom:8px;">Mood by day</div>', unsafe_allow_html=True)
-    st.markdown('<div class="cl-clay-card" style="border-radius:26px;box-shadow:var(--clay);background:var(--surface);padding:18px 14px 6px;margin-bottom:12px;">', unsafe_allow_html=True)
+    st.markdown('<div class="cl-section-heading" style="margin-bottom:8px;">Mood by day</div>', unsafe_allow_html=True)
+    st.markdown('<div class="swiss-card" style="border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);padding:16px 14px 6px;margin-bottom:12px;">', unsafe_allow_html=True)
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 

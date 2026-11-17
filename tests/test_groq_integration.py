@@ -33,6 +33,14 @@ def test_extract_json_array_formats():
     fenced_dict = '```json\n{"data": [{"comment_id": 3, "sentiment": "Mixed"}]}\n```'
     assert extract_json_array(fenced_dict) == [{"comment_id": 3, "sentiment": "Mixed"}]
 
+    # 5. Trailing commas (common in 20B/27B models)
+    trailing_comma_list = '[{"comment_id": 4, "sentiment": "Positive"},]'
+    assert extract_json_array(trailing_comma_list) == [{"comment_id": 4, "sentiment": "Positive"}]
+
+    # 6. Conversational text wrapping JSON
+    wrapped_text = 'Here is the classification:\n[{"comment_id": 5, "sentiment": "Neutral"}]\nDone!'
+    assert extract_json_array(wrapped_text) == [{"comment_id": 5, "sentiment": "Neutral"}]
+
 
 def test_is_fatal_groq_error():
     # Invalid key

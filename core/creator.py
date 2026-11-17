@@ -23,6 +23,7 @@ from google.genai import types
 
 from core.classifier import (
     sanitize_model_name,
+    DEFAULT_GEMINI_MODEL,
     SUPPORTED_GEMINI_MODELS,
     DEFAULT_GROQ_MODEL,
     SUPPORTED_GROQ_MODELS,
@@ -289,7 +290,10 @@ def answer_question(
         types.Content(role="user", parts=[types.Part(text=user_message)])
     )
 
-    active_model = sanitize_model_name(model_name)
+    if model_name in SUPPORTED_GROQ_MODELS or any(p in str(model_name) for p in ["openai/", "qwen/", "llama", "groq"]):
+        active_model = DEFAULT_GEMINI_MODEL
+    else:
+        active_model = sanitize_model_name(model_name)
     models_to_try = [active_model]
     for fallback in SUPPORTED_GEMINI_MODELS:
         if fallback not in models_to_try:

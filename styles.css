@@ -1,43 +1,185 @@
 /* ==========================================================================
    CommentLens — styles.css
-   Clay design system matching ui-kit/src/clay.css & ui-kit/src/style.css
+   Minimalism & Swiss Style (International Typographic Style) Design System
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&display=swap');
 
 /* --------------------------------------------------------------------------
-   1. DESIGN TOKENS
+   1. DESIGN TOKENS (LIGHT THEME DEFAULT)
    -------------------------------------------------------------------------- */
 :root {
-  --paper: #EEF4F1;
-  --surface: #FBFAFF;
-  --ink: #16211F;
-  --muted: #667370;
-  --faint: #9AA5A2;
-  --line: #E4ECE9;
+  /* Surface & Ground */
+  --paper: #F7F9F8;
+  --surface: #FFFFFF;
+  --surface-subtle: #F1F4F2;
+  --surface-raised: #FFFFFF;
+
+  /* Typography & Ink */
+  --ink: #111817;
+  --muted: #525F5C;
+  --faint: #889592;
+
+  /* Structural Lines & Borders */
+  --line: #E2E7E5;
+  --line-strong: #B8C2BF;
+
+  /* Accent (International Typographic Signal Teal) */
   --accent: #0F766E;
-  --accent-soft: #E4F1EF;
-  --pos: #2F8A5B;
-  --neg: #C2453D;
-  --neu: #A3ABA8;
-  --mix: #D4A017;
-  --ques: #3B6FD4;
-  --warn: #9A6B12;
+  --accent-hover: #0B5B55;
+  --accent-soft: #E6F3F1;
+  --accent-ink: #0B4E49;
+  --accent-contrast: #FFFFFF;
 
-  --clay: 10px 10px 22px rgba(15,118,110,.16), -8px -8px 18px rgba(255,255,255,.95), inset 3px 3px 6px rgba(255,255,255,.9), inset -4px -4px 8px rgba(15,118,110,.07);
-  --clay-sm: 6px 6px 14px rgba(15,118,110,.14), -5px -5px 12px rgba(255,255,255,.95), inset 2px 2px 4px rgba(255,255,255,.9);
-  --clay-press: inset 5px 5px 10px rgba(15,118,110,.18), inset -4px -4px 8px rgba(255,255,255,.8);
+  /* Semantic Data States (Functional & High Contrast) */
+  --pos: #1B7A4B;
+  --pos-soft: #E8F5EE;
+  --neg: #C53030;
+  --neg-soft: #FDF0ED;
+  --neu: #71807D;
+  --neu-soft: #EFF2F1;
+  --mix: #B7791F;
+  --mix-soft: #FEF7EC;
+  --ques: #2563EB;
+  --ques-soft: #EFF6FF;
 
-  --mint: #CFEDE6;
-  --sky: #D6E8FB;
-  --lilac: #E6DDF8;
-  --peach: #FDE3CF;
-  --butter: #FFF0C2;
-  --rose: #F9D5D5;
+  /* Warning / Alerts */
+  --warn: #B7791F;
+  --warn-soft: #FEF7EC;
+  --warn-line: #FBD38D;
+  --warn-text: #744210;
+
+  /* Typography scale */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Radii (Rational, Minimal, Rectilinear) */
+  --radius-none: 0px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 9999px;
+
+  /* Shadows (Flat-first: flat borders with minimal utility elevation) */
+  --shadow-none: none;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  /* Spacing Scale (8pt / 4pt grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Focus & Motion */
+  --focus-ring: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+  --transition-fast: 150ms ease;
+
+  /* Deprecated Clay Aliases (mapped to flat Swiss equivalents for zero regression) */
+  --clay: none;
+  --clay-sm: none;
+  --clay-press: none;
+  --mint: var(--pos-soft);
+  --sky: var(--ques-soft);
+  --lilac: var(--surface-subtle);
+  --peach: var(--mix-soft);
+  --butter: var(--mix-soft);
+  --rose: var(--neg-soft);
 }
 
 /* --------------------------------------------------------------------------
-   2. GLOBAL BODY & DRIFT GLOWS
+   DARK THEME TOKENS
+   -------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121514;
+    --surface: #1A1E1D;
+    --surface-subtle: #242A28;
+    --surface-raised: #222826;
+
+    --ink: #F0F4F2;
+    --muted: #9CA8A5;
+    --faint: #5A6664;
+
+    --line: #2B3533;
+    --line-strong: #475451;
+
+    --accent: #14B8A6;
+    --accent-hover: #2DD4BF;
+    --accent-soft: rgba(20, 184, 166, 0.15);
+    --accent-ink: #5EEAD4;
+    --accent-contrast: #121514;
+
+    --pos: #34D399;
+    --pos-soft: rgba(52, 211, 153, 0.15);
+    --neg: #F87171;
+    --neg-soft: rgba(248, 113, 113, 0.15);
+    --neu: #9CA3AF;
+    --neu-soft: rgba(156, 163, 175, 0.15);
+    --mix: #FBBF24;
+    --mix-soft: rgba(251, 191, 36, 0.15);
+    --ques: #60A5FA;
+    --ques-soft: rgba(96, 165, 250, 0.15);
+
+    --warn: #FBBF24;
+    --warn-soft: rgba(251, 191, 36, 0.15);
+    --warn-line: #78350F;
+    --warn-text: #FDE68A;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Explicit Dark Theme Class Overrides */
+[data-theme="dark"], [data-base="dark"], .stApp[data-theme="dark"] {
+  --paper: #121514;
+  --surface: #1A1E1D;
+  --surface-subtle: #242A28;
+  --surface-raised: #222826;
+
+  --ink: #F0F4F2;
+  --muted: #9CA8A5;
+  --faint: #5A6664;
+
+  --line: #2B3533;
+  --line-strong: #475451;
+
+  --accent: #14B8A6;
+  --accent-hover: #2DD4BF;
+  --accent-soft: rgba(20, 184, 166, 0.15);
+  --accent-ink: #5EEAD4;
+  --accent-contrast: #121514;
+
+  --pos: #34D399;
+  --pos-soft: rgba(52, 211, 153, 0.15);
+  --neg: #F87171;
+  --neg-soft: rgba(248, 113, 113, 0.15);
+  --neu: #9CA3AF;
+  --neu-soft: rgba(156, 163, 175, 0.15);
+  --mix: #FBBF24;
+  --mix-soft: rgba(251, 191, 36, 0.15);
+  --ques: #60A5FA;
+  --ques-soft: rgba(96, 165, 250, 0.15);
+
+  --warn: #FBBF24;
+  --warn-soft: rgba(251, 191, 36, 0.15);
+  --warn-line: #78350F;
+  --warn-text: #FDE68A;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* --------------------------------------------------------------------------
+   2. GLOBAL BODY & RESET
    -------------------------------------------------------------------------- */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -49,60 +191,27 @@ html, body {
 }
 
 body, [data-testid="stApp"], .stApp {
-  font-family: Inter, system-ui, -apple-system, sans-serif !important;
+  font-family: var(--font-sans) !important;
   font-size: 14px !important;
   line-height: 1.55 !important;
   color: var(--ink) !important;
-  min-height: 100vh !important;
-  background: radial-gradient(circle at 92% 6%, #A9E4F5 0, transparent 36%),
-              radial-gradient(circle at 2% 98%, #D4BFF7 0, transparent 40%),
-              radial-gradient(circle at 60% 110%, #FFC9A8 0, transparent 34%),
-              linear-gradient(160deg, #BDEBDD 0%, #D9ECF8 55%, #E9DDFA 100%) !important;
+  background-color: var(--paper) !important;
+  background-image: none !important;
   position: relative !important;
   overflow-x: hidden !important;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "cv11", "ss03";
 }
 
+/* Eliminate drifting glow blobs */
 .stApp::before, .stApp::after {
-  content: "";
-  position: fixed;
-  z-index: 0;
-  border-radius: 50%;
-  filter: blur(60px);
-  pointer-events: none;
-}
-
-.stApp::before {
-  width: 520px;
-  height: 520px;
-  left: -140px;
-  top: -120px;
-  background: #7FD8C4;
-  opacity: 0.85;
-  animation: drift1 22s ease-in-out infinite alternate;
-}
-
-.stApp::after {
-  width: 460px;
-  height: 460px;
-  right: -120px;
-  bottom: -140px;
-  background: #B8A2F0;
-  opacity: 0.8;
-  animation: drift2 26s ease-in-out infinite alternate;
-}
-
-@keyframes drift1 {
-  to { transform: translate(120px, 80px) scale(1.12); }
-}
-
-@keyframes drift2 {
-  to { transform: translate(-100px, -70px) scale(1.08); }
+  display: none !important;
+  content: none !important;
 }
 
 /* --------------------------------------------------------------------------
-   3. HIDE STREAMLIT CHROME
+   3. HIDE STREAMLIT CHROME & CONTAINER ALIGNMENT
    -------------------------------------------------------------------------- */
 footer, footer[data-testid="stFooter"], .streamlit-footer, #MainMenu, [data-testid="stDecoration"], [data-testid="stStatusWidget"], .stToolbar {
   display: none !important;
@@ -110,96 +219,130 @@ footer, footer[data-testid="stFooter"], .streamlit-footer, #MainMenu, [data-test
 }
 
 div[data-testid="stMainBlockContainer"], .block-container {
-  max-width: 1240px !important;
-  padding: 2.5rem 3rem 5rem !important;
+  max-width: 1180px !important;
+  padding: 2.5rem 2rem 5rem !important;
   position: relative !important;
   z-index: 1 !important;
 }
 
 /* --------------------------------------------------------------------------
-   4. SIDEBAR CLAY STYLING
+   4. SIDEBAR (MINIMALIST & FLAT)
    -------------------------------------------------------------------------- */
 [data-testid="stSidebar"] {
-  background: rgba(255, 255, 255, 0.72) !important;
-  backdrop-filter: blur(14px) !important;
+  background-color: var(--surface) !important;
   border-right: 1px solid var(--line) !important;
-  box-shadow: var(--clay-sm) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }
 
 [data-testid="stSidebar"] hr {
   border-color: var(--line) !important;
+  margin: var(--space-4) 0 !important;
+}
+
+[data-testid="stSidebar"] .stMarkdown h3 {
+  font-size: 18px !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.015em !important;
+  color: var(--ink) !important;
+  margin-bottom: 2px !important;
 }
 
 /* --------------------------------------------------------------------------
-   5. BUTTONS (PRIMARY TEAL GRADIENT & SECONDARY PEACH TINT)
+   5. BUTTONS (FLAT, RATIONAL SWISS BUTTONS)
    -------------------------------------------------------------------------- */
 button[kind="primary"], .btn.p, button[data-testid="baseButton-primary"] {
-  border: none !important;
-  background: linear-gradient(160deg, #1FA39A, #0F766E) !important;
-  box-shadow: 8px 8px 18px rgba(15,118,110,.32), inset 2px 2px 4px rgba(255,255,255,.35), inset -3px -3px 6px rgba(0,0,0,.12) !important;
-  border-radius: 14px !important;
-  color: #FFFFFF !important;
-  font-family: Inter, system-ui, sans-serif !important;
-  font-weight: 600 !important;
+  border: 1px solid var(--accent) !important;
+  background: var(--accent) !important;
+  box-shadow: none !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--accent-contrast) !important;
+  font-family: var(--font-sans) !important;
+  font-weight: 500 !important;
   font-size: 14px !important;
-  padding: 0 20px !important;
-  height: 42px !important;
+  padding: 0 18px !important;
+  height: 40px !important;
   cursor: pointer !important;
-  transition: transform .2s ease, box-shadow .2s ease !important;
+  transition: background var(--transition-fast), border-color var(--transition-fast) !important;
 }
 
-button[kind="primary"]:hover, .btn.p:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 10px 10px 22px rgba(15,118,110,.38), inset 2px 2px 4px rgba(255,255,255,.4) !important;
-  color: #FFFFFF !important;
+button[kind="primary"]:hover, .btn.p:hover, button[data-testid="baseButton-primary"]:hover {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+  color: var(--accent-contrast) !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
-button[kind="primary"]:active, .btn.p:active {
-  transform: translateY(1px) !important;
-  box-shadow: var(--clay-press) !important;
+button[kind="primary"]:active, .btn.p:active, button[data-testid="baseButton-primary"]:active {
+  background: var(--accent-hover) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+button[kind="primary"]:focus-visible, button[data-testid="baseButton-primary"]:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
 }
 
 button[kind="secondary"], .btn:not(.p), button[data-testid="baseButton-secondary"],
 [data-testid="stDownloadButton"] button {
-  border: none !important;
-  background: #FFF1E4 !important;
-  box-shadow: var(--clay-sm) !important;
-  border-radius: 14px !important;
+  border: 1px solid var(--line) !important;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+  border-radius: var(--radius-md) !important;
   color: var(--ink) !important;
-  font-family: Inter, system-ui, sans-serif !important;
-  font-weight: 600 !important;
+  font-family: var(--font-sans) !important;
+  font-weight: 500 !important;
   font-size: 14px !important;
-  padding: 0 18px !important;
-  height: 42px !important;
+  padding: 0 16px !important;
+  height: 40px !important;
   cursor: pointer !important;
-  transition: transform .2s ease, box-shadow .2s ease !important;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast) !important;
 }
 
-button[kind="secondary"]:hover, .btn:not(.p):hover, [data-testid="stDownloadButton"] button:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: var(--clay) !important;
+button[kind="secondary"]:hover, .btn:not(.p):hover, [data-testid="stDownloadButton"] button:hover,
+button[data-testid="baseButton-secondary"]:hover {
+  background: var(--surface-subtle) !important;
+  border-color: var(--line-strong) !important;
   color: var(--ink) !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
-button[kind="secondary"]:active, .btn:not(.p):active, [data-testid="stDownloadButton"] button:active {
-  transform: translateY(1px) !important;
-  box-shadow: var(--clay-press) !important;
+button[kind="secondary"]:active, .btn:not(.p):active, [data-testid="stDownloadButton"] button:active,
+button[data-testid="baseButton-secondary"]:active {
+  background: var(--line) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+button[kind="secondary"]:focus-visible, button[data-testid="baseButton-secondary"]:focus-visible,
+[data-testid="stDownloadButton"] button:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
 }
 
 /* --------------------------------------------------------------------------
-   6. INPUTS & INSET CLAY SEARCH
+   6. INPUTS & SEARCH (CRISP, CLEAN 1PX BORDERS)
    -------------------------------------------------------------------------- */
 input[type="text"], input[type="number"], .stTextInput input, .search {
-  border: none !important;
-  background: #EAF7FF !important;
-  box-shadow: var(--clay-press) !important;
-  border-radius: 14px !important;
+  border: 1px solid var(--line) !important;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+  border-radius: var(--radius-md) !important;
   color: var(--ink) !important;
-  padding: 0 16px !important;
-  height: 48px !important;
-  font-size: 15px !important;
-  font-family: Inter, system-ui, sans-serif !important;
+  padding: 0 14px !important;
+  height: 44px !important;
+  font-size: 14px !important;
+  font-family: var(--font-sans) !important;
   outline: none !important;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast) !important;
+}
+
+input[type="text"]:focus, input[type="number"]:focus, .stTextInput input:focus, .search:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 1px var(--accent) !important;
 }
 
 .stTextInput > div > div {
@@ -214,7 +357,7 @@ input[type="text"], input[type="number"], .stTextInput input, .search {
 }
 
 /* --------------------------------------------------------------------------
-   7. TOXIC TOGGLE / CHECKBOX INSET CLAY
+   7. CHECKBOX & TOGGLES
    -------------------------------------------------------------------------- */
 .stCheckbox {
   display: inline-flex !important;
@@ -224,311 +367,283 @@ input[type="text"], input[type="number"], .stTextInput input, .search {
 .stCheckbox span[data-testid="stCheckbox-label"], .toggle {
   color: var(--muted) !important;
   font-weight: 500 !important;
-  font-size: 14px !important;
+  font-size: 13px !important;
 }
 
 .stCheckbox div[data-testid="stCheckbox-indicator"], .toggle i {
-  background: #B9C7F0 !important;
-  box-shadow: var(--clay-press) !important;
-  border: none !important;
-  border-radius: 6px !important;
-  transition: background .25s ease !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line-strong) !important;
+  box-shadow: none !important;
+  border-radius: var(--radius-sm) !important;
+  transition: background var(--transition-fast), border-color var(--transition-fast) !important;
 }
 
 .stCheckbox:hover div[data-testid="stCheckbox-indicator"], .toggle:hover i {
-  background: #A8D8CF !important;
+  border-color: var(--accent) !important;
 }
 
 /* --------------------------------------------------------------------------
-   8. TABLE (ROUNDED CLAY CONTAINER WITH LAVENDER-TO-WHITE GRADIENT)
+   8. TABLE (CRISP RECTILINEAR SWISS CONTAINER)
    -------------------------------------------------------------------------- */
 [data-testid="stDataFrame"], .tbl {
-  border: none !important;
-  border-radius: 26px !important;
-  box-shadow: var(--clay) !important;
-  background: linear-gradient(180deg, #FFFFFF, #F4F0FF) !important;
-  padding: 8px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: none !important;
+  background: var(--surface) !important;
+  padding: 0 !important;
   overflow: hidden !important;
 }
 
 [data-testid="stDataFrame"] iframe {
-  border-radius: 20px !important;
+  border-radius: var(--radius-md) !important;
 }
 
-/* Row lift and tint */
 .tbl .r {
-  border-top: 1px solid #F0F4F2;
-  border-radius: 16px;
-  margin: 2px 0;
-  padding: 0 16px;
-  transition: background .2s ease, transform .2s ease;
+  border-top: 1px solid var(--line);
+  padding: 8px 16px;
+  transition: background var(--transition-fast);
 }
 
 .tbl .r.h {
-  background: transparent;
+  background: var(--surface-subtle);
   border-top: 0;
-  color: #4B3F8A;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .tbl .r:not(.h):hover {
-  background: #E6FAF5;
-  transform: translateX(3px);
+  background: var(--surface-subtle);
+  transform: none;
 }
 
 .tbl .r.sel {
-  background: var(--mint);
-  box-shadow: var(--clay-press);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: none;
 }
 
 /* --------------------------------------------------------------------------
-   9. PALETTE PILLS CLAY STYLING
+   9. PALETTE PILLS (CLEAN, MINIMALIST FILTER CAPSULES)
    -------------------------------------------------------------------------- */
 [data-testid="stButtonGroup"] {
-  gap: 10px !important;
+  gap: 8px !important;
   flex-wrap: wrap !important;
   background: transparent !important;
   padding: 4px 0 !important;
 }
 
 [data-testid="stButtonGroup"] button {
-  border: none !important;
-  background: #FFFFFF !important;
-  box-shadow: var(--clay-sm) !important;
-  height: 40px !important;
-  padding: 0 16px !important;
-  border-radius: 999px !important;
+  border: 1px solid var(--line) !important;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+  height: 36px !important;
+  padding: 0 14px !important;
+  border-radius: var(--radius-pill) !important;
   font-weight: 500 !important;
-  font-size: 14px !important;
+  font-size: 13px !important;
   color: var(--ink) !important;
-  transition: transform .2s ease, box-shadow .2s ease, background .2s ease !important;
+  font-variant-numeric: tabular-nums !important;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast) !important;
 }
 
 [data-testid="stButtonGroup"] button:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: var(--clay) !important;
+  background: var(--surface-subtle) !important;
+  border-color: var(--line-strong) !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 [data-testid="stButtonGroup"] button:active {
-  transform: translateY(1px) !important;
-  box-shadow: var(--clay-press) !important;
+  background: var(--line) !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 [data-testid="stButtonGroup"] button[data-selected="true"] {
-  background: linear-gradient(160deg, #17918A, #0F766E) !important;
-  box-shadow: 8px 8px 16px rgba(15,118,110,.3), inset 2px 2px 4px rgba(255,255,255,.3) !important;
-  color: #FFFFFF !important;
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent-contrast) !important;
+  box-shadow: none !important;
 }
 
 [data-testid="stButtonGroup"] button[data-selected="true"] * {
-  color: #FFFFFF !important;
+  color: var(--accent-contrast) !important;
 }
 
-[data-testid="stButtonGroup"] button[data-selected="true"]:hover {
-  box-shadow: 10px 10px 20px rgba(15,118,110,.36), inset 2px 2px 4px rgba(255,255,255,.3) !important;
+[data-testid="stButtonGroup"] button:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
 }
 
-/* Individual Pill Tints */
+/* Semantic standalone pill */
 .pill {
-  border: none;
+  border: 1px solid var(--line);
   background: var(--surface);
-  box-shadow: var(--clay-sm);
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 999px;
+  box-shadow: none;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-weight: 500;
+  font-size: 13px;
   white-space: nowrap;
-  transition: transform .2s ease, box-shadow .2s ease;
   color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-.pill.t-positive { background: #CDF2E2 !important; }
-.pill.t-negative { background: #FAD4D2 !important; }
-.pill.t-neutral  { background: #E4E8EE !important; }
-.pill.t-questions{ background: #D5E4FC !important; }
-.pill.t-suggestions{ background: #E8DDFB !important; }
-.pill.t-bug      { background: #FDE0C6 !important; }
-.pill.t-praise   { background: #D8F5C9 !important; }
-.pill.t-duplicates{ background: #FFF2C4 !important; }
-.pill.t-replies  { background: #D4EEF9 !important; }
-.pill.t-spam     { background: #F3D6EA !important; }
-.pill.t-top      { background: #FFE8D6 !important; }
-.pill.t-all.on   { background: linear-gradient(160deg, #17918A, #0F766E) !important; color: #fff !important; }
+.pill:hover {
+  background: var(--surface-subtle);
+  border-color: var(--line-strong);
+}
+
+.pill.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
 
 /* --------------------------------------------------------------------------
-   10. SIGNATURE MOOD BAR
+   10. SIGNATURE MOOD BAR (FLAT RECTILINEAR SEGMENTS)
    -------------------------------------------------------------------------- */
 .mood {
   display: flex !important;
-  gap: 6px !important;
+  gap: 4px !important;
   width: 100% !important;
 }
 
 .seg {
-  border-radius: 20px !important;
-  box-shadow: 4px 6px 10px rgba(15,118,110,.14), inset 0 2px 3px rgba(255,255,255,.45) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: none !important;
   transform-origin: left center !important;
-  animation: grow .9s cubic-bezier(.2,.8,.2,1) both !important;
-  filter: saturate(1.15) !important;
-}
-
-.mood .seg:nth-child(1) { animation-delay: .05s !important; }
-.mood .seg:nth-child(2) { animation-delay: .15s !important; }
-.mood .seg:nth-child(3) { animation-delay: .25s !important; }
-.mood .seg:nth-child(4) { animation-delay: .35s !important; }
-
-@keyframes grow {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+  transition: opacity var(--transition-fast);
 }
 
 .seglab {
-  margin-top: 10px !important;
-  font-size: 13px !important;
+  margin-top: 8px !important;
+  font-size: 12px !important;
   color: var(--muted) !important;
 }
 
 .seglab b {
   display: block !important;
   color: var(--ink) !important;
-  font-size: 15px !important;
+  font-size: 14px !important;
   font-weight: 600 !important;
   font-variant-numeric: tabular-nums !important;
 }
 
 /* --------------------------------------------------------------------------
-   11. THEME BARS (TEAL GRADIENT ON CLAY TRACK)
+   11. THEME BARS (FLAT ACCENT FILL ON RECTILINEAR TRACK)
    -------------------------------------------------------------------------- */
-.bar-fill {
-  transform-origin: left !important;
-  animation: grow 1.2s cubic-bezier(.2,.8,.2,1) .3s both !important;
-}
-
 .theme-bar-track {
-  height: 12px !important;
-  background: #E2EDE9 !important;
-  border-radius: 6px !important;
-  box-shadow: var(--clay-press) !important;
+  height: 8px !important;
+  background: var(--line) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: none !important;
   overflow: hidden !important;
   position: relative !important;
 }
 
 .theme-bar-fill {
   display: block !important;
-  height: 12px !important;
-  background: linear-gradient(90deg, #4FB8AC, #0F766E) !important;
-  border-radius: 6px !important;
-  box-shadow: 2px 2px 6px rgba(15,118,110,.25) !important;
+  height: 8px !important;
+  background: var(--accent) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: none !important;
 }
 
 /* --------------------------------------------------------------------------
-   12. TIMELINE & CLAY SURFACES
+   12. CARDS & SURFACES (SWISS RECTILINEAR CARDS)
    -------------------------------------------------------------------------- */
-.cl-clay-card {
-  border: none !important;
-  border-radius: 26px !important;
-  box-shadow: var(--clay) !important;
-  background: linear-gradient(180deg, #FFFFFF, #F4F0FF) !important;
-  padding: 24px 28px !important;
-}
-
-.draw {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: draw 1.8s ease-out .6s forwards;
-}
-
-@keyframes draw {
-  to { stroke-dashoffset: 0; }
+.swiss-card, .cl-clay-card, .cl-clay-sm {
+  border: 1px solid var(--line) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: none !important;
+  background: var(--surface) !important;
+  padding: 20px 24px !important;
 }
 
 /* --------------------------------------------------------------------------
-   13. ANALYZING SCREEN (PROGRESS BAR & PULSE DOT)
+   13. PROGRESS BARS & STATUS INDICATORS
    -------------------------------------------------------------------------- */
-.pulse {
-  animation: pulse 1.6s ease-in-out infinite !important;
-}
-
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(15,118,110,.45); }
-  50% { box-shadow: 0 0 0 9px rgba(15,118,110,0); }
-}
-
 [data-testid="stProgressBar"] > div {
-  height: 12px !important;
-  background: #DCE8E4 !important;
-  border-radius: 6px !important;
-  box-shadow: var(--clay-press) !important;
+  height: 8px !important;
+  background: var(--line) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: none !important;
 }
 
 [data-testid="stProgressBar"] > div > div {
-  height: 12px !important;
-  background: linear-gradient(90deg, #4FB8AC, #0F766E) !important;
-  border-radius: 6px !important;
-  box-shadow: 2px 2px 6px rgba(15,118,110,.3) !important;
+  height: 8px !important;
+  background: var(--accent) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: none !important;
+}
+
+.pulse {
+  animation: none !important;
+  box-shadow: none !important;
 }
 
 /* --------------------------------------------------------------------------
-   14. DETAIL PANEL (04) & SCRIM OVER TABLE
+   14. DETAIL PANEL & SCRIM
    -------------------------------------------------------------------------- */
 .cl-detail-card {
   background: var(--surface) !important;
-  border-radius: 26px !important;
-  box-shadow: var(--clay) !important;
-  padding: 32px 34px !important;
-  border: none !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: var(--shadow-sm) !important;
+  padding: 24px !important;
 }
 
 .cl-table-scrim {
   position: relative !important;
 }
 
-.cl-table-scrim::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(238, 244, 241, 0.55);
-  backdrop-filter: blur(2px);
-  border-radius: 26px;
-  pointer-events: none;
-  z-index: 2;
-}
-
 .chip {
-  border-radius: 999px !important;
-  box-shadow: var(--clay-sm) !important;
-  padding: 3px 11px !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: none !important;
+  border: 1px solid var(--line) !important;
+  background: var(--surface-subtle) !important;
+  color: var(--ink) !important;
+  padding: 3px 8px !important;
   margin-right: 6px !important;
+  margin-bottom: 6px !important;
   display: inline-block !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  font-variant-numeric: tabular-nums !important;
 }
 
-.chip.b { background: var(--rose) !important; color: #9C2F28 !important; }
-.chip.q { background: var(--sky) !important; color: #2B55B0 !important; box-shadow: var(--clay-sm), 0 0 0 1px rgba(59,111,212,.15) !important; }
-.chip.s { background: var(--mint) !important; color: #0B5F58 !important; box-shadow: var(--clay-sm), 0 0 0 1px rgba(15,118,110,.15) !important; }
-.chip.h { background: var(--butter) !important; color: #7A5200 !important; }
+.chip.b { background: var(--neg-soft) !important; border-color: transparent !important; color: var(--neg) !important; }
+.chip.q { background: var(--ques-soft) !important; border-color: transparent !important; color: var(--ques) !important; }
+.chip.s { background: var(--pos-soft) !important; border-color: transparent !important; color: var(--pos) !important; }
+.chip.h { background: var(--mix-soft) !important; border-color: transparent !important; color: var(--mix) !important; }
 
 /* --------------------------------------------------------------------------
-   15. STREAMLIT TABS CLAY STYLING
+   15. STREAMLIT TABS (MINIMALIST BORDERED TABS)
    -------------------------------------------------------------------------- */
 .stTabs [data-baseweb="tab-list"] {
-  gap: 28px !important;
+  gap: 24px !important;
   border-bottom: 1px solid var(--line) !important;
   background: transparent !important;
-  padding-bottom: 4px !important;
+  padding-bottom: 0 !important;
 }
 
 .stTabs [data-baseweb="tab"] {
-  padding: 10px 4px !important;
+  padding: 12px 2px !important;
   color: var(--muted) !important;
   font-weight: 500 !important;
-  font-size: 15px !important;
+  font-size: 14px !important;
   border: none !important;
   background: transparent !important;
-  transition: all .2s ease !important;
+  transition: color var(--transition-fast) !important;
 }
 
 .stTabs [data-baseweb="tab"]:hover {
@@ -541,6 +656,11 @@ input[type="text"], input[type="number"], .stTextInput input, .search {
   border-bottom: 2px solid var(--accent) !important;
 }
 
+.stTabs [data-baseweb="tab"]:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
+}
+
 /* --------------------------------------------------------------------------
    16. REDUCED MOTION PREFERENCE
    -------------------------------------------------------------------------- */
@@ -549,37 +669,32 @@ input[type="text"], input[type="number"], .stTextInput input, .search {
     animation: none !important;
     transition: none !important;
   }
-  .draw { stroke-dashoffset: 0 !important; }
 }
 
 /* --------------------------------------------------------------------------
-   17. EXTRA CLAY UTILITIES (QUOTES, SUMMARY, LANGUAGES)
+   17. SWISS EDITORIAL QUOTES & UTILITIES
    -------------------------------------------------------------------------- */
 .quote-card {
-  border: none !important;
-  border-radius: 20px !important;
-  box-shadow: var(--clay) !important;
+  border: 1px solid var(--line) !important;
+  border-left: 3px solid var(--accent) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: none !important;
   background: var(--surface) !important;
-  padding: 24px 28px !important;
-  margin: 14px 0 !important;
-  transition: transform .2s ease, box-shadow .2s ease !important;
-}
-
-.quote-card:hover {
-  transform: translateY(-2px) !important;
+  padding: 18px 20px !important;
+  margin: 12px 0 !important;
 }
 
 .quote-text {
-  font-size: 16px !important;
+  font-size: 15px !important;
   line-height: 1.6 !important;
   color: var(--ink) !important;
-  margin-bottom: 12px !important;
+  margin-bottom: 8px !important;
 }
 
 .quote-meta {
   display: flex !important;
-  gap: 16px !important;
-  font-size: 13px !important;
+  gap: 12px !important;
+  font-size: 12px !important;
   color: var(--muted) !important;
 }
 
@@ -588,26 +703,18 @@ input[type="text"], input[type="number"], .stTextInput input, .search {
   color: var(--ink) !important;
 }
 
-.summary-box {
-  background: transparent !important;
-  border: none !important;
-  font-size: 16px !important;
-  line-height: 1.7 !important;
-  color: var(--ink) !important;
-}
-
 .lang-bars {
-  margin-top: 14px !important;
+  margin-top: 12px !important;
 }
 
 .lang-bar {
-  margin: 10px 0 !important;
+  margin: 8px 0 !important;
 }
 
 .lang-header {
   display: flex !important;
   justify-content: space-between !important;
-  font-size: 13px !important;
+  font-size: 12px !important;
   margin-bottom: 4px !important;
 }
 
@@ -622,41 +729,65 @@ input[type="text"], input[type="number"], .stTextInput input, .search {
 }
 
 .lang-track {
-  height: 8px !important;
-  background: #E2EDE9 !important;
-  border-radius: 4px !important;
-  box-shadow: var(--clay-press) !important;
+  height: 6px !important;
+  background: var(--line) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: none !important;
   overflow: hidden !important;
 }
 
 .lang-fill {
-  height: 8px !important;
-  border-radius: 4px !important;
+  height: 6px !important;
+  border-radius: var(--radius-sm) !important;
 }
 
 .cl-section-heading, .h2 {
-  font-family: 'Inter Display', Inter, system-ui, sans-serif !important;
-  font-size: 20px !important;
+  font-family: var(--font-sans) !important;
+  font-size: 18px !important;
   font-weight: 650 !important;
-  color: #0B4F4A !important;
+  color: var(--ink) !important;
   letter-spacing: -0.015em !important;
   margin-bottom: 8px !important;
 }
 
 .cl-badge {
   display: inline-block !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  padding: 3px 11px !important;
-  border-radius: 999px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  padding: 2px 8px !important;
+  border-radius: var(--radius-sm) !important;
   margin-right: 6px !important;
-  box-shadow: var(--clay-sm) !important;
-  background: #EEF1EF !important;
-  color: #4A5754 !important;
+  border: 1px solid var(--line) !important;
+  background: var(--surface-subtle) !important;
+  color: var(--ink) !important;
+  font-variant-numeric: tabular-nums !important;
 }
 
-.cl-badge-positive { background: var(--mint) !important; color: #0B5F58 !important; }
-.cl-badge-negative { background: var(--rose) !important; color: #9C2F28 !important; }
-.cl-badge-neutral  { background: #E4E8EE !important; color: #555E5C !important; }
-.cl-badge-mixed    { background: var(--butter) !important; color: #7A5200 !important; }
-.cl-badge-accent   { background: var(--sky) !important; color: #2B55B0 !important; }
+.cl-badge-positive { background: var(--pos-soft) !important; color: var(--pos) !important; border-color: transparent !important; }
+.cl-badge-negative { background: var(--neg-soft) !important; color: var(--neg) !important; border-color: transparent !important; }
+.cl-badge-neutral  { background: var(--neu-soft) !important; color: var(--neu) !important; border-color: transparent !important; }
+.cl-badge-mixed    { background: var(--mix-soft) !important; color: var(--mix) !important; border-color: transparent !important; }
+.cl-badge-accent   { background: var(--accent-soft) !important; color: var(--accent-ink) !important; border-color: transparent !important; }
+
+/* --------------------------------------------------------------------------
+   18. RESPONSIVE MEDIA QUERIES (SWISS RESILIENCE)
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  div[data-testid="stMainBlockContainer"], .block-container {
+    padding: 1.5rem 1rem 3rem !important;
+  }
+
+  [data-testid="stButtonGroup"] {
+    gap: 6px !important;
+  }
+
+  [data-testid="stButtonGroup"] button {
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+  }
+
+  .cl-detail-card {
+    padding: 16px !important;
+  }
+}

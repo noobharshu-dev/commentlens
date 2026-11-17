@@ -254,7 +254,7 @@ def extract_json_array(raw_text: str) -> list[dict]:
     """
     Safely extract a JSON array of dicts from raw LLM text.
     Handles bare arrays, dictionary envelopes (e.g. {"comments": [...]}, {"data": [...]}),
-    and markdown-fenced code blocks (```json ... ```).
+    markdown-fenced code blocks (```json ... ```), trailing commas, and boundary noise.
     """
     clean_text = raw_text.strip()
     if clean_text.startswith("```"):
@@ -262,17 +262,38 @@ def extract_json_array(raw_text: str) -> list[dict]:
         clean_text = re.sub(r"\s*```$", "", clean_text)
         clean_text = clean_text.strip()
 
-    data = json.loads(clean_text)
-    if isinstance(data, list):
-        return [item for item in data if isinstance(item, dict)]
+    def _unpack(parsed_obj):
+        if isinstance(parsed_obj, list):
+            return [item for item in parsed_obj if isinstance(item, dict)]
+        if isinstance(parsed_obj, dict):
+            for key in ["comments", "data", "results", "classifications", "items"]:
+                if key in parsed_obj and isinstance(parsed_obj[key], list):
+                    return [item for item in parsed_obj[key] if isinstance(item, dict)]
+            for val in parsed_obj.values():
+                if isinstance(val, list):
+                    return [item for item in val if isinstance(item, dict)]
+        return None
 
-    if isinstance(data, dict):
-        for key in ["comments", "data", "results", "classifications", "items"]:
-            if key in data and isinstance(data[key], list):
-                return [item for item in data[key] if isinstance(item, dict)]
-        for val in data.values():
-            if isinstance(val, list):
-                return [item for item in val if isinstance(item, dict)]
+    # Attempt 1: Direct JSON parse
+    try:
+        data = json.loads(clean_text)
+        unpacked = _unpack(data)
+        if unpacked is not None:
+            return unpacked
+    except Exception:
+        pass
+
+    # Attempt 2: Repair trailing commas and find outermost [ ... ] or { ... }
+    repaired = re.sub(r",\s*([\]}])", r"\1", clean_text)
+    match = re.search(r"(\[.*\]|\{.*\})", repaired, re.DOTALL)
+    if match:
+        try:
+            data = json.loads(match.group(1))
+            unpacked = _unpack(data)
+            if unpacked is not None:
+                return unpacked
+        except Exception:
+            pass
 
     raise ValueError(f"Could not extract JSON list from model response: {raw_text[:200]}")
 
@@ -391,7 +412,10 @@ def classify_batch(
         temperature=0.1,
     )
 
-    active_model = sanitize_model_name(model_name)
+    if model_name in SUPPORTED_GROQ_MODELS or any(p in str(model_name) for p in ["openai/", "qwen/", "llama", "groq"]):
+        active_model = DEFAULT_GEMINI_MODEL
+    else:
+        active_model = sanitize_model_name(model_name)
     models_to_try = [active_model]
     for fallback in SUPPORTED_GEMINI_MODELS:
         if fallback not in models_to_try:
@@ -662,7 +686,10 @@ def summarize_comments(
         "Summary:"
     )
 
-    active_model = sanitize_model_name(model_name)
+    if model_name in SUPPORTED_GROQ_MODELS or any(p in str(model_name) for p in ["openai/", "qwen/", "llama", "groq"]):
+        active_model = DEFAULT_GEMINI_MODEL
+    else:
+        active_model = sanitize_model_name(model_name)
     models_to_try = [active_model]
     for fallback in SUPPORTED_GEMINI_MODELS:
         if fallback not in models_to_try:
