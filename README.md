@@ -6,71 +6,94 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.40+-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io/)
-[![Gemini](https://img.shields.io/badge/Google_Gemini-Structured_JSON-4285F4?style=for-the-badge&logo=googlegemini&logoColor=white)](https://aistudio.google.com/)
+[![Groq](https://img.shields.io/badge/Groq-default_LLM-F55036?style=for-the-badge)](https://console.groq.com/)
+[![Gemini](https://img.shields.io/badge/Google_Gemini-optional_provider-4285F4?style=for-the-badge&logo=googlegemini&logoColor=white)](https://aistudio.google.com/)
 [![YouTube](https://img.shields.io/badge/YouTube_Data_API-v3-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://developers.google.com/youtube/v3)
 
-![Tests](https://img.shields.io/badge/tests-13_passing-2E7D5B?style=flat-square)
-![Theme](https://img.shields.io/badge/UI-light_&_minimal-0F766E?style=flat-square)
+![Hackathon](https://img.shields.io/badge/GeNarrative_Clash_2026-GenAI_×_creators-7C3AED?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-43_passing-2E7D5B?style=flat-square)
 ![Demo](https://img.shields.io/badge/demo_mode-no_keys_needed-D98B0B?style=flat-square)
-![Languages](https://img.shields.io/badge/understands-English_·_Hindi_·_Bengali_·_Hinglish-7C3AED?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-8A8F98?style=flat-square)
+![Languages](https://img.shields.io/badge/English_·_Hindi_·_Bengali_·_Hinglish-0F766E?style=flat-square)
 
-### Paste a link. Click a group. Read the people who watched.
+### Paste a YouTube link. Click a group. Read the people who watched.
 
-[**Try the demo**](#-run-it-in-five-minutes) &nbsp;·&nbsp; [**How it works**](#-how-it-works) &nbsp;·&nbsp; [**Features**](#-what-the-creator-sees) &nbsp;·&nbsp; [**Architecture**](#-architecture) &nbsp;·&nbsp; [**Roadmap**](#-roadmap)
-
-</div>
-
----
-
-## The problem, in one morning
-
-> It is 9 a.m. The video went live last night. There are **4,200 comments**. The first 60 are "first!" and emojis.
-> Somewhere below is the comment that explains why the second half lost viewers, and another asking for the part 2 everyone is waiting for.
-
-Likes and views say **how many** people watched. They do not say whether viewers were **confused, delighted, or let down**. Scrolling will not find the signal, and nobody has a week to read it all.
-
-**CommentLens reads every comment for you**, sorts them by meaning, and turns the noise into a short list of things a creator can act on.
-
-<div align="center">
-
-| Without CommentLens | With CommentLens |
-|:--|:--|
-| Scroll for hours, read a fraction | Every comment read and labelled |
-| Guess the mood from likes | A 0 to 100 sentiment score with a plain label |
-| Miss the bug report on page 40 | Bug reports are one click away |
-| Answer the same question 50 times | Questions grouped, with suggested replies |
-| Trolls ruin the morning | Toxic comments hidden by default |
+[**Try it in 60 seconds**](#-try-it-in-60-seconds) &nbsp;·&nbsp; [**Why it fits the theme**](#-why-this-fits-genarrative) &nbsp;·&nbsp; [**What makes it different**](#-what-makes-it-more-than-an-api-wrapper) &nbsp;·&nbsp; [**Architecture**](#-architecture) &nbsp;·&nbsp; [**Limits**](#-honest-limitations-and-next-steps)
 
 </div>
 
 ---
 
-## 🎬 The idea in one picture
+## The pitch
+
+Creators get thousands of comments and have no time to read them. Likes and views say **how many** people watched, not whether viewers were **confused, delighted, or let down**.
+
+**CommentLens uses GenAI to read every comment, sort it by meaning, and hand the creator a short list of things to act on:** what to fix, what to answer, what to make next.
+
+It is not a chatbot that summarises a page. It is a working tool: a mood bar, clickable groups, a drill-down table, cited answers, and a report the creator can download.
 
 <div align="center">
-<img src="docs/palettes.svg" alt="Illustration of clickable palettes with counts and a comment table" width="100%"/>
+<img src="docs/screenshot-dashboard.png" alt="CommentLens dashboard with mood score, mood bar, summary, and theme bars" width="100%"/>
 </div>
-
-<sub>An illustration of the interface with example numbers. Each pill is a group of comments. Click one to open it, click it again to return to all comments.</sub>
 
 ---
 
-## 🔁 How it works
+## ⚡ Try it in 60 seconds
 
-<div align="center">
-<img src="docs/pipeline.svg" alt="Animated pipeline: fetch, tidy, read, check, show" width="100%"/>
-</div>
+**No API keys needed.** Demo mode loads a saved multilingual analysis, so it works offline and never hits a rate limit.
 
-<br/>
+```bash
+git clone https://github.com/noobharshu-dev/commentlens.git
+cd commentlens
+pip install -r requirements.txt
+python -m streamlit run app.py
+```
 
-| Step | What happens | Why it matters |
+Open **http://localhost:8501** and click **Load sample video (demo)**. Then try this tour:
+
+| # | Do this | You will see |
 |:--:|:--|:--|
-| **1. Fetch** | The YouTube Data API returns comments and replies, up to the limit you set. | No scraping, no login, just an API key. |
-| **2. Tidy** | Empty comments are dropped. Repeats are **flagged and counted, never deleted**. | You can see when 100 people say the same thing. |
-| **3. Read** | Gemini reads **40 comments per request** and returns strict JSON labels. | Fewer requests, so it fits free-tier limits. |
-| **4. Check** | Every answer is validated, retried on failure, and falls back to another model if needed. | Failed comments land in an **Unclassified** group instead of vanishing. |
-| **5. Show** | Counts, score, themes, and timeline are computed locally and shown as palettes. | One click from a number to the comments behind it. |
+| 1 | Look at the top of the dashboard | A mood score out of 100 and a **mood bar** sized by comment count |
+| 2 | Click the **Negative** pill | Every negative comment, instantly. Click again to go back |
+| 3 | Click any row | A drawer with all labels, a one-line summary, and a **suggested reply** |
+| 4 | Open **Ask the comments** and ask *"What do viewers want next?"* | An answer that **cites the comment IDs** it used |
+| 5 | Open **Creator report** | A written report you can download as Markdown |
+| 6 | Open **Diagnostics & logs** | Live pipeline events, latency, and errors |
+
+> **Want it live?** Add a YouTube key and a Groq key (or Gemini) to `.env`, paste any public video link, and it analyses real comments. See [setup](#-full-setup).
+
+<!-- TODO: add the demo video link here -->
+<!-- 🎥 **Demo video:** https://... -->
+
+---
+
+## 🎯 Why this fits GeNarrative
+
+The theme is where **GenAI meets human creativity**. CommentLens supports the creator, it does not replace them.
+
+| What judges look for | How CommentLens answers it |
+|:--|:--|
+| **Creator support** | Turns audience feedback into actions: bug reports, questions, requests, and a draft reply for each. |
+| **Best use of GenAI** | The LLM does the part humans cannot do at scale: reading thousands of comments in English, Hindi, Bengali, and Hinglish by meaning, with strict JSON output. |
+| **Human stays in charge** | It **drafts** replies but never posts. Every AI answer cites the real comments behind it, so the creator can check it. |
+| **Functionality** | Works end to end today: fetch, classify, dashboard, Ask, report, compare, export. Demo mode and caching make it reliable. |
+| **Implementation quality** | Strict schema validation, retries with model fallback, 43 passing tests, live diagnostics. |
+| **Innovation** | Labels are **flags, not boxes**, and duplicates are **counted, not deleted**, so creators see what many people are saying. |
+
+---
+
+## 🧠 What makes it more than an API wrapper
+
+**1. Nothing is silently dropped.** Every answer from the model is validated and retried. If a batch still fails, those comments go to an **Unclassified** group with a message saying how many. The dashboard never pretends it read something it did not.
+
+**2. Grounded answers.** *Ask the comments* only uses comment text, is told not to invent facts about the video, and shows the cited comments under each answer.
+
+**3. Built for free-tier limits.** Comments are sent in small batches, and if a model is rate-limited the request retries and falls back to the next model, which has its own quota. A batch that still fails never crashes the run.
+
+**4. Repeats are a signal.** A hundred identical requests for "part 2" is the most useful thing in a comment section. Duplicates are flagged and counted, with their own group.
+
+**5. Safe by default.** Toxic comments are hidden and never quoted in summaries or top quotes.
+
+**6. Built for India's creators.** Comments are tagged `English`, `Hindi`, `Bengali`, `Hinglish`, or `Other`, and the CSV export opens correctly in Excel (UTF-8 with BOM).
 
 ---
 
@@ -91,9 +114,9 @@ flowchart LR
     end
 
     subgraph READ [" 3 · Read and 4 · Check "]
-      DU --> B["Batches of 40"]:::ai --> G["Gemini<br/>structured JSON"]:::ai
+      DU --> B["Batches<br/>20 Groq · 40 Gemini"]:::ai --> G["LLM<br/>structured JSON"]:::ai
       G --> V{"Valid?"}:::decide
-      V -- no, retry with backoff --> G
+      V -- "429 or bad JSON:<br/>retry, next model" --> G
       V -- no, retries used up --> UN["Unclassified group"]:::warn
       V -- yes --> R["Labelled comments"]:::ok
     end
@@ -104,9 +127,10 @@ flowchart LR
     S --> D
 
     subgraph SHOW [" 5 · Show "]
-      D["Dashboard"]:::ui --> P["Palettes and table"]:::ui
+      D["Dashboard"]:::ui --> PL["Palettes and table"]:::ui
       D --> Q["Ask the comments"]:::ui
       D --> X["Creator report and CSV"]:::ui
+      D --> DG["Diagnostics and live logs"]:::ui
     end
 
     classDef start fill:#0F766E,stroke:#0F766E,color:#fff
@@ -120,36 +144,9 @@ flowchart LR
     classDef ui fill:#FFFFFF,stroke:#0F766E,color:#0B2B2A
 ```
 
-### A request, step by step
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Creator
-    participant App as CommentLens (Streamlit)
-    participant YT as YouTube Data API
-    participant AI as Gemini
-    participant Disk as Local cache
-
-    Creator->>App: Paste link, choose comment limit
-    App->>Disk: Seen this video before?
-    alt cached
-        Disk-->>App: Saved results
-    else new video
-        App->>YT: commentThreads.list (pages of 100)
-        YT-->>App: Comments and replies
-        loop every 40 comments
-            App->>AI: Batch + schema
-            AI-->>App: JSON labels
-            App->>App: Validate, retry, or mark Unclassified
-        end
-        App->>AI: One call for the written summary
-        App->>Disk: Save results
-    end
-    App-->>Creator: Palettes, score, themes, timeline
-    Creator->>App: Click "Negative"
-    App-->>Creator: Every negative comment
-```
+<div align="center">
+<img src="docs/pipeline.svg" alt="Animated pipeline: fetch, tidy, read, check, show" width="100%"/>
+</div>
 
 ---
 
@@ -159,17 +156,17 @@ sequenceDiagram
 <tr>
 <td width="50%" valign="top">
 
-### 🟢 Palettes with counts
-Positive, Negative, Neutral, Questions, Suggestions, Bug reports, Praise, Duplicates, Replies, Spam, Top liked, and Unclassified. One click opens a group, a second click closes it.
+### 🌡️ Mood bar and score
+One full-width bar split into Positive, Neutral, Mixed, and Negative, with a 0 to 100 score and a plain label.
 
-### 🌡️ Mood score
-A single number from 0 to 100 with a plain label: **mostly negative**, **mixed**, or **mostly positive**.
+### 🟢 Clickable palettes
+Positive, Negative, Neutral, Questions, Suggestions, Bug reports, Praise, Duplicates, Replies, Spam, Top liked, Unclassified.
 
 ### 📝 Written summary
-A few plain sentences on what viewers liked, what they criticised, and what they asked for.
+What viewers liked, what they criticised, what they asked for.
 
-### 🏷️ Theme bars
-The most common topics inside suggestions and criticism, such as *audio quality*, *pacing*, or *part 2 request*.
+### 🏷️ Themes and languages
+Top topics in suggestions and criticism, each with a **Filter** button.
 
 </td>
 <td width="50%" valign="top">
@@ -178,37 +175,33 @@ The most common topics inside suggestions and criticism, such as *audio quality*
 Positive and negative reactions by day, so a mood drop after a sponsor segment shows up.
 
 ### 🗂️ Detail drawer
-Click any row to see the full comment, every label, a one-line summary, and a reply you can copy.
+Full comment, every label, a one-line summary, and a reply to copy.
 
 ### 💬 Ask the comments
-Ask in plain words: *"What do viewers want next?"* The answer **cites the comment IDs it used**, so every claim can be checked.
+Plain-language questions with **cited** answers.
 
 ### 🆚 Compare videos
-Put two videos side by side: sentiment, volume, and themes.
+Two analysed videos side by side.
 
 </td>
 </tr>
 </table>
 
+<table>
+<tr>
+<td width="50%"><img src="docs/01-landing-app.png" alt="Landing screen with link field and demo button"/><br/><sub><b>Start:</b> paste a link or load the demo.</sub></td>
+<td width="50%"><img src="docs/05-ask-the-comments-app.png" alt="Ask the comments tab with a cited answer"/><br/><sub><b>Ask the comments:</b> answers cite their sources.</sub></td>
+</tr>
+</table>
+
+The results area has six tabs: **Explore comments**, **Ask the comments**, **Top quotes**, **Creator report**, **Compare videos**, and **Diagnostics & logs**.
+
 <details>
-<summary><b>🛡️ Safety and honesty features (click to open)</b></summary>
+<summary><b>🏷️ What every comment is labelled with</b></summary>
 
 <br/>
 
-- **Toxic comments are hidden by default** and never quoted in summaries or the top-quotes list. A checkbox reveals them when needed.
-- **Nothing is silently dropped.** If Gemini fails on a batch, those comments appear in an Unclassified group with a message saying how many.
-- **Answers are grounded.** The Ask panel only uses comment text and shows the cited comments under each answer. It is told not to invent facts about the video.
-- **No raw errors.** Problems such as an invalid link, comments turned off, a missing key, or a rate limit appear as plain sentences, and secrets are stripped from messages.
-
-</details>
-
----
-
-## 🏷️ What every comment is labelled with
-
-A comment can be several things at once, so labels are **flags**, not a single box. A question can also be negative, and it will appear in both groups.
-
-<div align="center">
+A comment can be several things at once, so labels are **flags**, not a single box. A question can also be negative, and it appears in both groups.
 
 | Label | Values |
 |:--|:--|
@@ -221,30 +214,41 @@ A comment can be several things at once, so labels are **flags**, not a single b
 | Priority | `High` · `Medium` · `Low` |
 | Extras | one-line summary, suggested reply, duplicate count |
 
-</div>
+</details>
+
+<details>
+<summary><b>🔁 A request, step by step (sequence diagram)</b></summary>
+
+<br/>
 
 ```mermaid
-mindmap
-  root((Comment))
-    Mood
-      Positive
-      Negative
-      Neutral
-      Mixed
-    Intent
-      Question
-      Suggestion
-      Bug report
-      Praise
-    Handle with care
-      Rude or toxic
-      Spam
-      Duplicate
-    Context
-      Theme
-      Language
-      Priority
+sequenceDiagram
+    autonumber
+    actor Creator
+    participant App as CommentLens (Streamlit)
+    participant YT as YouTube Data API
+    participant AI as LLM (Groq or Gemini)
+    participant Disk as Local cache
+
+    Creator->>App: Paste link, choose comment limit
+    App->>Disk: Seen this video before?
+    alt cached
+        Disk-->>App: Saved results
+    else new video
+        App->>YT: commentThreads.list (pages of 100)
+        YT-->>App: Comments and replies
+        loop every batch
+            App->>AI: Batch + schema
+            AI-->>App: JSON labels
+            App->>App: Validate, retry, or mark Unclassified
+        end
+        App->>AI: One call for the written summary
+        App->>Disk: Save results
+    end
+    App-->>Creator: Mood bar, score, themes, timeline
 ```
+
+</details>
 
 ---
 
@@ -252,127 +256,156 @@ mindmap
 
 | Situation | What CommentLens does |
 |:--|:--|
-| No API keys yet | **Demo mode** loads a built-in multilingual sample, no keys needed. |
+| No API keys | **Demo mode** loads a saved multilingual sample. |
 | Same video twice | Loads from the **local cache**, with zero API calls. |
-| Gemini model is busy | Retries with backoff, then falls back to another model. |
+| Rate limit (429) | Waits, retries, then falls back to the next model. |
 | A batch keeps failing | The rest still show. Failed comments go to **Unclassified**. |
-| Comments turned off | Shows: *"Comments are turned off for this video."* |
-| Key typed wrongly | Explains which key is wrong, with no stack trace and no leaked key. |
-| Opening the CSV in Excel | Hindi and Bengali display correctly (UTF-8 with BOM). |
+| Comments turned off | Plain message: *"Comments are turned off for this video."* |
+| Wrong key typed | Says which key is wrong, with no stack trace and no leaked key. |
+| Something looks stuck | **Diagnostics & logs** shows each batch, key, latency, and error. |
 
-Run the **13 automated tests** with `python -m pytest tests/test_all.py -v`. They cover link parsing, cleaning, duplicate flags, batching, schema validation, palette filters, scoring, citations, reports, and CSV export.
+**43 automated tests** cover link parsing, cleaning, duplicates, batching, schema validation, palette filters, scoring, citations, reports, CSV export, the classifier, diagnostics, and the mood bar.
+
+```bash
+pip install pytest pytest-asyncio
+python -m pytest tests -v
+```
 
 ---
 
 ## 🧰 Tech stack
 
-<div align="center">
-
 | Layer | Choice | Reason |
 |:--|:--|:--|
 | Interface | **Streamlit** | Tables, charts, and tabs with little code |
-| AI | **Google Gemini** via `google-genai` | Free tier and structured JSON output |
+| Default AI | **Groq** (`openai/gpt-oss-120b`) | Fast, free tier, JSON output, keys can be pooled |
+| Optional AI | **Google Gemini** (`google-genai`) | Second provider with structured-JSON schema |
 | Data | **YouTube Data API v3** | Official, free, API key only |
 | Tables and charts | **pandas**, **Plotly** | Fast filtering and clean charts |
 | Settings | **python-dotenv** | Keys stay in `.env`, never in code |
 | Storage | **JSON files** in `cache/` | No database to install |
 
-</div>
-
 ---
 
-## 🚀 Run it in five minutes
+## 🚀 Full setup
 
 ```bash
-# 1. Get the code
-git clone https://github.com/ashadul-20/commentlens.git
+git clone https://github.com/noobharshu-dev/commentlens.git
 cd commentlens
-
-# 2. Install
 pip install -r requirements.txt
-
-# 3. Create your settings file
 copy .env.example .env        # macOS/Linux: cp .env.example .env
-
-# 4. Add your keys to .env (see below)
-
-# 5. Run
+# add your keys to .env, then:
 python -m streamlit run app.py
 ```
 
-Open **http://localhost:8501**.
-
-> **No keys yet?** Click **Load sample video (demo)** on the first screen to explore the whole dashboard right now.
-
 <details>
-<summary><b>🔑 Getting the two API keys (click to open)</b></summary>
+<summary><b>🔑 Getting your API keys</b></summary>
 
 <br/>
 
-**Gemini key**
-1. Open [Google AI Studio](https://aistudio.google.com/) and sign in.
-2. Choose **Get API key** and copy it.
+**Groq key (default):** open the [Groq Console](https://console.groq.com/), go to **API Keys → Create API key**. It starts with `gsk_`.
 
-**YouTube Data API key**
-1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project.
-2. Go to **APIs & Services → Library**, search for **YouTube Data API v3**, and click **Enable**.
-3. Go to **Credentials → Create credentials → API key**. Copy the full key, which starts with `AIza`.
+**YouTube Data API key:** in [Google Cloud Console](https://console.cloud.google.com/), create a project, enable **YouTube Data API v3** under **APIs & Services → Library**, then **Credentials → Create credentials → API key**.
 
-Put them in `.env`:
+**Gemini key (optional):** open [Google AI Studio](https://aistudio.google.com/) and choose **Get API key**.
 
 ```env
-GEMINI_API_KEY=your_gemini_key
 YOUTUBE_API_KEY=your_youtube_key
+
+# Groq is the default provider
+GROQ_API_KEY=your_groq_key
+GROQ_MODEL=openai/gpt-oss-120b
+
+# Optional second provider
+GEMINI_API_KEY=your_gemini_key
+GEMINI_MODEL=gemini-3.5-flash-lite
+
+# Switch provider (default: groq)
+# LLM_PROVIDER=gemini
 ```
 
-You can also paste both keys in the app under **Settings → API keys & credentials** in the sidebar.
+You can also paste keys and switch provider and model in the app, under **Settings → API keys & credentials** in the sidebar.
+
+</details>
+
+<details>
+<summary><b>🗂️ Project layout</b></summary>
+
+<br/>
+
+```text
+commentlens/
+├── app.py                  the Streamlit app: screens, tabs, sidebar
+├── styles.css              the visual design
+├── core/
+│   ├── youtube.py          link parsing and comment fetching
+│   ├── cleaning.py         tidying, duplicate flags, batching
+│   ├── classifier.py       prompts, validation, retries, Groq and Gemini paths
+│   ├── key_pool.py         multi-key rotation (work in progress)
+│   ├── analysis.py         counts, palettes, score, themes, timeline
+│   ├── creator.py          quotes, grounded answers, creator report
+│   ├── diagnostics.py      live event log for the Diagnostics tab
+│   ├── export.py           Excel-safe CSV
+│   └── cache.py            local cache per video
+├── tests/                  43 tests (unit and integration)
+├── cache/                  saved analyses, including the demo video
+├── docs/                   README images and implementation plans
+├── DESIGN-BRIEF.md         UI/UX spec and reference screens
+└── .env.example            key template (no real keys)
+```
 
 </details>
 
 ---
 
-## 🗂️ Project layout
-
-```text
-commentlens/
-├── app.py                 the screen you see
-├── styles.css             the visual design
-├── core/
-│   ├── youtube.py         link parsing and comment fetching
-│   ├── cleaning.py        tidying, duplicate flags, batching
-│   ├── classifier.py      Gemini prompts, validation, retries
-│   ├── analysis.py        counts, palettes, score, themes, timeline
-│   ├── creator.py         quotes, grounded answers, creator report
-│   ├── export.py          Excel-safe CSV
-│   └── cache.py           local cache per video
-├── tests/test_all.py      13 unit tests
-├── docs/                  README images
-└── .env.example           key template (no real keys)
-```
-
----
-
 ## 🔒 Privacy
 
-- Comment text is sent to **Google Gemini** so it can be read.
+- Comment text is sent to the **LLM provider you pick** (Groq or Google Gemini) so it can be read.
 - Results are saved only in the local `cache/` folder on your computer.
-- Your keys live in `.env`, which Git never uploads.
+- Keys live in `.env`, which Git never uploads, and are masked in the UI and logs.
 
 ---
 
-## 🗺️ Roadmap
+## 🗺️ Roadmap: the remaining 50%
 
-- [x] Clickable palettes with counts
-- [x] Structured Gemini output with validation and retries
-- [x] Sentiment score, summary, theme bars, and timeline
+This repository is the **working 50% MVP**: one platform, one video at a time, as a polished analysis tool. The rest turns it into a product.
+
+### Phase 2: faster and cheaper
+- [ ] **Parallel multi-key engine.** Run several API keys at once to cut analysis time sharply. Early code exists and is being hardened, so it is not claimed as finished.
+- [ ] **Quick Pulse mode (YouTube).** Fetch thousands of comments cheaply, then analyse only the **top 100 most liked**. Result: fast, cheap, and a general read of what viewers say. It will show a clear label such as *"based on 100 of 4,200 comments"*.
+- [ ] **Progressive results.** The dashboard fills in as batches finish, instead of one long wait.
+
+### Phase 3: more platforms
+- [ ] **Instagram Reels and videos** through a third-party API, for the same analysis.
+- [ ] **A platform adapter layer**, so YouTube and Instagram share one pipeline and new platforms are easy to add.
+
+### Phase 4: from tool to product
+- [ ] **UI/UX overhaul.** A proper landing page and the supporting pages a real product needs.
+- [ ] **Login and accounts** (optional, still under consideration): saved history and per-user results.
+
+### Ideas we are exploring
+- [ ] **Next video ideas:** turn viewer requests into a ranked list of what to make next.
+- [ ] **Reply in my voice:** draft replies that match the creator's own tone, editable before copying.
+- [ ] **Mood-drop alerts** after a new upload.
+- [ ] **Trend across videos:** how audience mood moves over the last 10 uploads.
+- [ ] **Shareable report link** and **PDF export** for sponsors and brands.
+
+### Already built (this MVP)
+- [x] Clickable palettes, mood bar, summary, themes, timeline
+- [x] Structured LLM output with validation and retries
 - [x] Detail drawer with suggested replies
 - [x] Ask the comments, with cited sources
 - [x] Creator report and Excel-safe CSV
 - [x] Demo mode and local cache
 - [x] Compare two videos
-- [ ] Editable reply drafts before copying
-- [ ] Alerts when a new upload's mood drops sharply
-- [ ] Export the report as PDF
+- [x] Groq default with Gemini option
+- [x] Diagnostics tab with live logs
+
+### Limitations today
+- **YouTube only**, and only public videos with comments turned on.
+- Free-tier LLM limits make very large videos slow.
+- Labels come from an LLM, so a few comments will be misread. Every drill-down shows the original text so the creator can check.
+- Cache is local JSON, so it is not shared between users.
 
 ---
 
@@ -384,18 +417,23 @@ Yes. Comments are classified by meaning, not keywords, and each comment is tagge
 </details>
 
 <details>
+<summary><b>Will it post replies to YouTube for me?</b></summary>
+No. It drafts replies you can copy. It never posts, and never asks you to sign in to Google.
+</details>
+
+<details>
 <summary><b>Why are duplicates kept instead of removed?</b></summary>
-Repeated comments tell you something. A hundred identical requests is a strong signal, so they are marked and counted, and have their own palette.
+Repeated comments are a signal. A hundred identical requests is worth knowing, so they are flagged, counted, and given their own group.
 </details>
 
 <details>
 <summary><b>Why can the counts add up to more than the total?</b></summary>
-Because one comment can belong to several groups. A comment can be a question and negative, so it shows in both.
+One comment can belong to several groups. A comment can be a question and negative, so it shows in both.
 </details>
 
 <details>
-<summary><b>Will it post replies to YouTube for me?</b></summary>
-No. It drafts replies you can copy. It never posts, and never asks you to sign in to Google.
+<summary><b>I keep hitting rate limits. What can I do?</b></summary>
+Lower the comment limit in the sidebar, or switch provider between Groq and Gemini. Faster parallel processing is on the roadmap.
 </details>
 
 ---
@@ -404,7 +442,7 @@ No. It drafts replies you can copy. It never posts, and never asks you to sign i
 
 ### Built for creators who deserve to hear their audience.
 
-**MIT License** · Made by [Ashadul](https://github.com/ashadul-20) for a hackathon with Google Gemini and the YouTube Data API
+**GeNarrative Clash 2026** · Made by [noobharshu-dev](https://github.com/noobharshu-dev) <!-- TODO: add teammates -->
 
 <sub>If CommentLens helps you, a star on the repository is a small and welcome thank you.</sub>
 
